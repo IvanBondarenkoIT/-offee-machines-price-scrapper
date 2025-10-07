@@ -22,6 +22,15 @@ ALTA_CONFIG = {
     "product_container_base": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[3]/div[{index}]",
 }
 
+# KONTAKT Configuration
+KONTAKT_CONFIG = {
+    "url": "https://kontakt.ge/en/samzareulos-teknika/samzareulos-tsvrili-teknika/qavis-aparatebi?kh_mtsarmoebeli=DeLonghi",
+    "excel_file": INPUT_DIR / "Parsing kontakt.xlsx",
+    "load_more_button_xpath": "/html/body/div[1]/main/div[4]/div/div[5]/div/div[2]/button",
+    "expected_products": 28,
+    "product_container_base": "/html/body/div[1]/main/div[4]/div/div[5]/div/div[2]/div[{index}]",
+}
+
 # Selenium Configuration
 SELENIUM_CONFIG = {
     "implicit_wait": 3,  # Reduced for faster scraping

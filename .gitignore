@@ -50,6 +50,15 @@ results/*.csv
 # Logs
 logs/
 
+# Debug files (temporary debugging scripts)
+debug_*.py
+debug_*.html
+check_*.py
+show_*.py
+test_kontakt*.py
+test_alta*.py
+analyze_kontakt*.py
+
 # Geckodriver/Chrome driver
 geckodriver.log
 chromedriver.log
