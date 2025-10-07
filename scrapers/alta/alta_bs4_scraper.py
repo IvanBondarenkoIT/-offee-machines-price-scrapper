@@ -221,7 +221,8 @@ class AltaBS4Scraper:
             return None
         
         try:
-            cleaned = re.sub(r'[₾₽$€\s",\']', '', price_str)
+            # Remove currency symbols, spaces, quotes, and text like "GEL"
+            cleaned = re.sub(r'[₾₽$€\s",\']|GEL|gel', '', price_str, flags=re.IGNORECASE)
             return float(cleaned)
         except (ValueError, TypeError):
             return None

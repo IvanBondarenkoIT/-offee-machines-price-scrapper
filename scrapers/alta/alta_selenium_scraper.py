@@ -192,7 +192,7 @@ class AltaScraper:
         Clean and convert price string to float
         
         Args:
-            price_str: Price string (e.g., "1499", "₾1,499", "1499.99")
+            price_str: Price string (e.g., "1499", "₾1,499", "1499.99", "799 GEL")
             
         Returns:
             Float price or None if invalid
@@ -201,8 +201,8 @@ class AltaScraper:
             return None
         
         try:
-            # Remove currency symbols, spaces, quotes
-            cleaned = re.sub(r'[₾₽$€\s",\']', '', price_str)
+            # Remove currency symbols, spaces, quotes, and text like "GEL"
+            cleaned = re.sub(r'[₾₽$€\s",\']|GEL|gel', '', price_str, flags=re.IGNORECASE)
             # Convert to float
             return float(cleaned)
         except (ValueError, TypeError):
