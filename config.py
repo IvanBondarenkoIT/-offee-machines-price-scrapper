@@ -31,6 +31,16 @@ KONTAKT_CONFIG = {
     "product_container_base": "/html/body/div[1]/main/div[4]/div/div[5]/div/div[2]/div[{index}]",
 }
 
+# ELITE Configuration
+ELITE_CONFIG = {
+    "url_base": "https://ee.ge/en/coffee-machine/brand=delonghi;-c201t",
+    "excel_file": INPUT_DIR / "Parsing elit.xlsx",
+    "pages": 3,  # Total pages with pagination
+    "items_per_page": 16,
+    "expected_products": 48,  # 3 pages × 16 items
+    "pagination_param": "page",  # URL: ?page=2
+}
+
 # Selenium Configuration
 SELENIUM_CONFIG = {
     "implicit_wait": 3,  # Reduced for faster scraping
