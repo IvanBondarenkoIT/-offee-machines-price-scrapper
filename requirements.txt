@@ -9,3 +9,7 @@ python-dotenv==1.0.1
 # Testing (optional)
 pytest==7.4.3
 
+# Google Sheets export
+gspread==5.12.0
+oauth2client==4.1.3
+

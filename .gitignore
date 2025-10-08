@@ -42,6 +42,9 @@ ENV/
 data/inbox/
 data/output/
 
+# Combined Excel files
+combined_prices_*.xlsx
+
 # Results
 results/*.xlsx
 results/*.csv
