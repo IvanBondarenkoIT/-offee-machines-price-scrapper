@@ -44,9 +44,10 @@ ELITE_CONFIG = {
 # DIM KAVA Configuration (our own store)
 DIMKAVA_CONFIG = {
     "url": "https://dimkava.ge/brand/delonghi/",
-    "expected_products": 42,
-    "wait_for_load": 5,  # Seconds to wait for all products to load
-    "product_selector": "/html/body/div[2]/div[3]/div/div/div/ul/li",  # li[1] to li[42]
+    "expected_products": 42,  # Total items on page (41 with prices)
+    "wait_for_load": 8,  # Seconds to wait after scrolling
+    "scroll_pause": 3,  # Seconds between scrolls
+    "num_scrolls": 5,  # Number of scrolls to trigger lazy loading
 }
 
 # Selenium Configuration

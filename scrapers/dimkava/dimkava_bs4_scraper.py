@@ -58,15 +58,25 @@ class DimKavaBS4Scraper:
         logger.info(f"Loading page: {self.url}")
         self.driver.get(self.url)
         
-        # Initial wait
-        time.sleep(3)
+        # Initial wait for page to start loading
+        time.sleep(4)
         
         # Scroll down multiple times to trigger lazy loading
+        scroll_pause = DIMKAVA_CONFIG.get("scroll_pause", 3)
         logger.info("Scrolling to load all products...")
-        for i in range(3):
+        
+        for i in range(5):  # Increased scrolls
+            # Scroll to bottom
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
-            logger.info(f"Scroll {i+1}/3 complete")
+            time.sleep(scroll_pause)
+            
+            # Check how many products loaded
+            from selenium.webdriver.common.by import By
+            try:
+                titles = self.driver.find_elements(By.CLASS_NAME, "un-product-title")
+                logger.info(f"Scroll {i+1}/5: {len(titles)} products visible")
+            except:
+                pass
         
         # Final wait for dynamic content to load
         wait_time = DIMKAVA_CONFIG["wait_for_load"]
@@ -85,23 +95,22 @@ class DimKavaBS4Scraper:
         product_titles = soup.find_all(class_='un-product-title')
         logger.info(f"Found {len(product_titles)} products with un-product-title class")
         
-        # Filter DeLonghi products
-        delonghi_items = []
+        # Get all items (this is DeLonghi brand page, all should be DeLonghi)
+        # Don't filter by text - the page is already filtered
+        product_items = []
         for title_elem in product_titles:
-            text = title_elem.get_text(strip=True)
-            if text and 'delonghi' in text.lower():
-                # Get parent li element
-                parent = title_elem.parent
-                for _ in range(10):  # Go up to find li
-                    if parent and parent.name == 'li':
-                        delonghi_items.append((title_elem, parent))
-                        break
-                    parent = parent.parent if parent else None
+            # Get parent li element
+            parent = title_elem.parent
+            for _ in range(10):  # Go up to find li
+                if parent and parent.name == 'li':
+                    product_items.append((title_elem, parent))
+                    break
+                parent = parent.parent if parent else None
         
-        logger.info(f"Found {len(delonghi_items)} DeLonghi product items")
+        logger.info(f"Processing {len(product_items)} product items from brand page")
         
         # Parse each product
-        for idx, (title_elem, li_elem) in enumerate(delonghi_items, 1):
+        for idx, (title_elem, li_elem) in enumerate(product_items, 1):
             try:
                 # Extract name from un-product-title class
                 name = title_elem.get_text(strip=True)
@@ -159,7 +168,7 @@ class DimKavaBS4Scraper:
                 self.products.append(product)
                 
                 if idx % 10 == 0:
-                    logger.info(f"Progress: {idx}/{len(delonghi_items)} products...")
+                    logger.info(f"Progress: {idx}/{len(product_items)} products...")
                 
             except Exception as e:
                 logger.error(f"Error parsing product {idx}: {e}")
