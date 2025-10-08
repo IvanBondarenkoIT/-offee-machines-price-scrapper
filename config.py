@@ -37,8 +37,16 @@ ELITE_CONFIG = {
     "excel_file": INPUT_DIR / "Parsing elit.xlsx",
     "pages": 3,  # Total pages with pagination
     "items_per_page": 16,
-    "expected_products": 48,  # 3 pages × 16 items
+    "expected_products": 48,  # 3 pages × 16 items (actually 40)
     "pagination_param": "page",  # URL: ?page=2
+}
+
+# DIM KAVA Configuration (our own store)
+DIMKAVA_CONFIG = {
+    "url": "https://dimkava.ge/brand/delonghi/",
+    "expected_products": 42,
+    "wait_for_load": 5,  # Seconds to wait for all products to load
+    "product_selector": "/html/body/div[2]/div[3]/div/div/div/ul/li",  # li[1] to li[42]
 }
 
 # Selenium Configuration
