@@ -38,7 +38,8 @@ class FullCycleRunner:
                 [sys.executable, str(scraper_path)],
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minutes timeout
+                timeout=300,  # 5 minutes timeout
+                cwd=str(self.base_dir)  # Set working directory
             )
             
             if result.returncode == 0:
@@ -151,7 +152,8 @@ class FullCycleRunner:
                 [sys.executable, 'build_price_comparison.py'],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
+                cwd=str(self.base_dir)  # Set working directory
             )
             
             if result.returncode == 0:
