@@ -11,7 +11,7 @@ import glob
 # Google Sheets API requires credentials setup
 # This version creates local Excel that can be uploaded to Google Sheets
 
-OUTPUT_DIR = Path("data/output")
+OUTPUT_DIR = Path(__file__).parent / "data" / "output"
 
 
 def find_latest_file(pattern):
@@ -20,6 +20,72 @@ def find_latest_file(pattern):
     if not files:
         return None
     return max(files, key=lambda x: x.stat().st_mtime)
+
+
+def load_inventory():
+    """Load our inventory from остатки.xls"""
+    # Use absolute path to avoid issues
+    file_path = Path(__file__).parent / 'data' / 'inbox' / 'остатки.xls'
+    
+    if not file_path.exists():
+        print("\n[WARNING] Inventory file (остатки.xls) not found")
+        return None
+    
+    print(f"\n[OK] Loading inventory from {file_path.name}")
+    
+    try:
+        # Read without header
+        df = pd.read_excel(file_path, header=None)
+        
+        # Parse the data structure
+        # Row format: ['number.', 'Product Name', 'unit', quantity]
+        products = []
+        
+        for i in range(len(df)):
+            row = df.iloc[i]
+            row_values = [v for v in row.values if pd.notna(v)]
+            
+            # Check if row contains DeLonghi product
+            row_str = ' '.join([str(v) for v in row_values])
+            if 'delonghi' in row_str.lower():
+                # Try to parse the row
+                # Format: ['number.', 'Product Name', 'unit', quantity]
+                if len(row_values) >= 3:
+                    # Last value is usually quantity
+                    qty = row_values[-1]
+                    if isinstance(qty, (int, float)) and qty > 0:
+                        # Product name is usually the second element (or combine if needed)
+                        name = None
+                        if len(row_values) == 4:
+                            name = str(row_values[1])
+                        elif len(row_values) == 3:
+                            name = str(row_values[0])
+                        elif len(row_values) > 4:
+                            # Join middle elements
+                            name = ' '.join([str(v) for v in row_values[1:-2]])
+                        
+                        if name and 'delonghi' in name.lower():
+                            products.append({
+                                'Product Name': name,
+                                'Quantity': int(qty)
+                            })
+        
+        if products:
+            inventory = pd.DataFrame(products)
+            # Add index
+            inventory.insert(0, '#', range(1, len(inventory) + 1))
+            
+            print(f"[OK] Loaded {len(inventory)} DeLonghi products from inventory")
+            return inventory
+        else:
+            print(f"[WARNING] No DeLonghi products found in inventory")
+            return None
+            
+    except Exception as e:
+        print(f"[ERROR] Failed to load inventory: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 def create_combined_excel():
@@ -46,6 +112,11 @@ def create_combined_excel():
         else:
             print(f"\n[WARNING] {store_name}: No data file found")
     
+    # Load inventory (our stock)
+    inventory_df = load_inventory()
+    if inventory_df is not None:
+        store_data['INVENTORY'] = inventory_df
+    
     if not store_data:
         print("\n[ERROR] No data files found!")
         return None
@@ -60,28 +131,46 @@ def create_combined_excel():
     
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         for store_name, df in store_data.items():
-            # Select only needed columns in order
-            columns_to_export = ['index', 'name', 'final_price', 'regular_price', 'discount_price', 'has_discount']
-            df_export = df[columns_to_export].copy()
-            
-            # Rename columns for clarity
-            df_export.columns = ['#', 'Product Name', 'Final Price (GEL)', 'Regular Price', 'Discount Price', 'Has Discount']
-            
-            # Write to sheet
-            df_export.to_excel(writer, sheet_name=store_name, index=False)
-            print(f"[OK] Sheet '{store_name}': {len(df_export)} products")
+            if store_name == 'INVENTORY':
+                # Inventory has different structure
+                df_export = df.copy()
+                df_export.to_excel(writer, sheet_name=store_name, index=False)
+                print(f"[OK] Sheet '{store_name}': {len(df_export)} products (our stock)")
+            else:
+                # Select only needed columns in order
+                columns_to_export = ['index', 'name', 'final_price', 'regular_price', 'discount_price', 'has_discount']
+                df_export = df[columns_to_export].copy()
+                
+                # Rename columns for clarity
+                df_export.columns = ['#', 'Product Name', 'Final Price (GEL)', 'Regular Price', 'Discount Price', 'Has Discount']
+                
+                # Write to sheet
+                df_export.to_excel(writer, sheet_name=store_name, index=False)
+                print(f"[OK] Sheet '{store_name}': {len(df_export)} products")
         
         # Create summary sheet
         summary_data = []
         for store_name, df in store_data.items():
-            summary_data.append({
-                'Store': store_name,
-                'Products': len(df),
-                'Min Price': df['final_price'].min(),
-                'Max Price': df['final_price'].max(),
-                'Avg Price': round(df['final_price'].mean(), 2),
-                'With Discount': df['has_discount'].sum() if 'has_discount' in df.columns else 0,
-            })
+            if store_name == 'INVENTORY':
+                summary_data.append({
+                    'Store': store_name,
+                    'Products': len(df),
+                    'Total Quantity': df['Quantity'].sum() if 'Quantity' in df.columns else 0,
+                    'Min Price': '-',
+                    'Max Price': '-',
+                    'Avg Price': '-',
+                    'With Discount': '-',
+                })
+            else:
+                summary_data.append({
+                    'Store': store_name,
+                    'Products': len(df),
+                    'Total Quantity': '-',
+                    'Min Price': df['final_price'].min(),
+                    'Max Price': df['final_price'].max(),
+                    'Avg Price': round(df['final_price'].mean(), 2),
+                    'With Discount': df['has_discount'].sum() if 'has_discount' in df.columns else 0,
+                })
         
         summary_df = pd.DataFrame(summary_data)
         summary_df.to_excel(writer, sheet_name='SUMMARY', index=False)
@@ -120,13 +209,14 @@ def main():
     
     if output_file:
         print(f"\n[SUCCESS] Combined Excel ready: {output_file.name}")
-        print("\nThis file contains:")
-        print("  - ALTA sheet (74 products)")
-        print("  - KONTAKT sheet (28 products)")
-        print("  - ELITE sheet (40 products)")
-        print("  - DIM_KAVA sheet (41 products)")
-        print("  - SUMMARY sheet (statistics)")
-        print("\nUpload to Google Sheets for easy sharing!")
+    print("\nThis file contains:")
+    print("  - ALTA sheet (74 products)")
+    print("  - KONTAKT sheet (28 products)")
+    print("  - ELITE sheet (40 products)")
+    print("  - DIM_KAVA sheet (41 products)")
+    print("  - INVENTORY sheet (our stock)")
+    print("  - SUMMARY sheet (statistics)")
+    print("\nUpload to Google Sheets for easy sharing!")
 
 
 if __name__ == "__main__":
