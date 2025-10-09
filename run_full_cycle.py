@@ -207,7 +207,7 @@ class FullCycleRunner:
         # Show top 10 products
         print("\nTOP 10 PRODUCTS BY QUANTITY:")
         print("-"*80)
-        top10 = df.nlargest(10, 'Quantity')[['Quantity', 'Model', 'Our Price', 'ALTA', 'KONTAKT', 'ELITE', 'DIM_KAVA']]
+        top10 = df.nlargest(10, 'Quantity')[['Quantity', 'Model', 'Our Price', 'DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE']]
         print(top10.to_string(index=False))
         
         # Show statistics
@@ -222,7 +222,7 @@ class FullCycleRunner:
         print("="*80)
         
         # Count where we have competitors
-        competitor_cols = ['ALTA', 'KONTAKT', 'ELITE', 'DIM_KAVA']
+        competitor_cols = ['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE']
         for col in competitor_cols:
             has_price = df[col] != '-'
             if has_price.sum() > 0:

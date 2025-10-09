@@ -219,8 +219,8 @@ class PriceComparisonBuilder:
                 'Our Price': inventory_product['price'],
             }
             
-            # Add competitor prices
-            for source in ['ALTA', 'KONTAKT', 'ELITE', 'DIM_KAVA']:
+            # Add competitor prices - DIM_KAVA first (our website), then others
+            for source in ['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE']:
                 if source in competitor_products:
                     p = competitor_products[source]
                     if p['has_discount'] and p['regular_price'] and p['discount_price']:
