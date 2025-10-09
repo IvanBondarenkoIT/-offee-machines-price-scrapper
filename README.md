@@ -87,11 +87,12 @@ python export_to_google_sheets.py
 python export_to_google_sheets.py
 ```
 
-Создает файл `combined_prices_YYYYMMDD_HHMMSS.xlsx` с 5 вкладками:
+Создает файл `combined_prices_YYYYMMDD_HHMMSS.xlsx` с 6 вкладками:
 - **ALTA** - 74 товара
 - **KONTAKT** - 28 товаров
 - **ELITE** - 40 товаров
 - **DIM_KAVA** - 41 товар (наш магазин)
+- **INVENTORY** - 76 товаров DeLonghi из наших остатков (1264 единицы)
 - **SUMMARY** - статистика
 
 📖 Подробнее: [GOOGLE_SHEETS_GUIDE.md](GOOGLE_SHEETS_GUIDE.md)
