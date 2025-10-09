@@ -23,7 +23,7 @@ def find_latest_file(pattern):
 
 
 def load_inventory():
-    """Load our inventory from остатки.xls"""
+    """Load our inventory from остатки.xls with prices"""
     # Use absolute path to avoid issues
     file_path = Path(__file__).parent / 'data' / 'inbox' / 'остатки.xls'
     
@@ -38,44 +38,79 @@ def load_inventory():
         df = pd.read_excel(file_path, header=None)
         
         # Parse the data structure
-        # Row format: ['number.', 'Product Name', 'unit', quantity]
+        # Two formats:
+        # 5 elements: ['number', 'name', qty, price, total]
+        # 6 elements: ['number', 'name', 'unit', qty, price, total]
         products = []
         
         for i in range(len(df)):
             row = df.iloc[i]
             row_values = [v for v in row.values if pd.notna(v)]
             
+            # Skip header rows and category rows
+            if len(row_values) < 4:
+                continue
+            
             # Check if row contains DeLonghi product
             row_str = ' '.join([str(v) for v in row_values])
-            if 'delonghi' in row_str.lower():
-                # Try to parse the row
-                # Format: ['number.', 'Product Name', 'unit', quantity]
-                if len(row_values) >= 3:
-                    # Last value is usually quantity
-                    qty = row_values[-1]
-                    if isinstance(qty, (int, float)) and qty > 0:
-                        # Product name is usually the second element (or combine if needed)
-                        name = None
-                        if len(row_values) == 4:
-                            name = str(row_values[1])
-                        elif len(row_values) == 3:
-                            name = str(row_values[0])
-                        elif len(row_values) > 4:
-                            # Join middle elements
-                            name = ' '.join([str(v) for v in row_values[1:-2]])
-                        
-                        if name and 'delonghi' in name.lower():
+            if 'delonghi' not in row_str.lower():
+                continue
+            
+            # Skip category headers (e.g., "Delonghi coffee makers")
+            if len(row_values) == 1:
+                continue
+            
+            # Parse based on length
+            name = None
+            qty = None
+            price = None
+            
+            try:
+                if len(row_values) == 5:
+                    # Format: ['1.', 'DeLonghi ECAM22.114.B', 2, 927, 1854]
+                    name = str(row_values[1])
+                    qty = row_values[2]
+                    price = row_values[3]
+                elif len(row_values) == 6:
+                    # Format: ['2.', 'Delonghi EC 9865 M', 'шт.', 14, 1813.64, 25391]
+                    name = str(row_values[1])
+                    qty = row_values[3]
+                    price = row_values[4]
+                elif len(row_values) == 7:
+                    # Format with extra data: ['8.', 'Delonghi EC890.GR Dedica Duo', 3, 'шт.', 2, 489, 978]
+                    name = str(row_values[1])
+                    qty = row_values[4]
+                    price = row_values[5]
+                
+                # Validate and add
+                if name and 'delonghi' in name.lower():
+                    # Convert to numbers
+                    if isinstance(qty, (int, float)) and isinstance(price, (int, float)):
+                        if qty > 0 and price > 0:
                             products.append({
                                 'Product Name': name,
-                                'Quantity': int(qty)
+                                'Quantity': int(qty),
+                                'Price (GEL)': float(price)
                             })
+            except (ValueError, IndexError, TypeError) as e:
+                # Skip rows that don't match expected format
+                continue
         
         if products:
             inventory = pd.DataFrame(products)
             # Add index
             inventory.insert(0, '#', range(1, len(inventory) + 1))
             
+            # Calculate statistics
+            total_qty = inventory['Quantity'].sum()
+            total_value = (inventory['Quantity'] * inventory['Price (GEL)']).sum()
+            avg_price = inventory['Price (GEL)'].mean()
+            
             print(f"[OK] Loaded {len(inventory)} DeLonghi products from inventory")
+            print(f"    Total quantity: {total_qty} units")
+            print(f"    Total value: {total_value:,.2f} GEL")
+            print(f"    Average price: {avg_price:,.2f} GEL")
+            
             return inventory
         else:
             print(f"[WARNING] No DeLonghi products found in inventory")
@@ -152,13 +187,24 @@ def create_combined_excel():
         summary_data = []
         for store_name, df in store_data.items():
             if store_name == 'INVENTORY':
+                # Inventory has different structure with prices
+                total_qty = df['Quantity'].sum() if 'Quantity' in df.columns else 0
+                if 'Price (GEL)' in df.columns:
+                    min_price = df['Price (GEL)'].min()
+                    max_price = df['Price (GEL)'].max()
+                    avg_price = round(df['Price (GEL)'].mean(), 2)
+                    total_value = round((df['Quantity'] * df['Price (GEL)']).sum(), 2)
+                else:
+                    min_price = max_price = avg_price = total_value = '-'
+                
                 summary_data.append({
                     'Store': store_name,
                     'Products': len(df),
-                    'Total Quantity': df['Quantity'].sum() if 'Quantity' in df.columns else 0,
-                    'Min Price': '-',
-                    'Max Price': '-',
-                    'Avg Price': '-',
+                    'Total Quantity': total_qty,
+                    'Min Price': min_price,
+                    'Max Price': max_price,
+                    'Avg Price': avg_price,
+                    'Total Value': total_value,
                     'With Discount': '-',
                 })
             else:
@@ -169,6 +215,7 @@ def create_combined_excel():
                     'Min Price': df['final_price'].min(),
                     'Max Price': df['final_price'].max(),
                     'Avg Price': round(df['final_price'].mean(), 2),
+                    'Total Value': '-',
                     'With Discount': df['has_discount'].sum() if 'has_discount' in df.columns else 0,
                 })
         
