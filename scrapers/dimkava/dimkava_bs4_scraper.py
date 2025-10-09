@@ -119,47 +119,69 @@ class DimKavaBS4Scraper:
                     logger.warning(f"Invalid name for product {idx}")
                     continue
                 
-                # Extract price from class 'price'
-                # XPath mentioned: span[2]/span/bdi, but we'll use class selector
-                price_str = None
+                # Extract price - check for discount structure
+                # Regular price: <del><span><bdi>
+                # Discount price: <ins><span><bdi>
+                regular_price_str = None
+                discount_price_str = None
+                has_discount = False
                 
                 # Find price element by class
                 price_elem = li_elem.find(class_='price')
                 if price_elem:
-                    # Try to find bdi
-                    bdi = price_elem.find('bdi')
-                    if bdi:
-                        price_str = bdi.get_text(strip=True)
+                    # Check for discount structure (del + ins)
+                    del_elem = price_elem.find('del')
+                    ins_elem = price_elem.find('ins')
+                    
+                    if del_elem and ins_elem:
+                        # Has discount
+                        has_discount = True
+                        
+                        # Regular price in <del>
+                        del_bdi = del_elem.find('bdi')
+                        if del_bdi:
+                            regular_price_str = del_bdi.get_text(strip=True)
+                        
+                        # Discount price in <ins>
+                        ins_bdi = ins_elem.find('bdi')
+                        if ins_bdi:
+                            discount_price_str = ins_bdi.get_text(strip=True)
                     else:
-                        # Try direct text
-                        price_str = price_elem.get_text(strip=True)
+                        # No discount, just regular price
+                        bdi = price_elem.find('bdi')
+                        if bdi:
+                            regular_price_str = bdi.get_text(strip=True)
                 
-                # Fallback: try to find any bdi or span with price
-                if not price_str:
+                # Fallback: try to find any bdi with price
+                if not regular_price_str and not discount_price_str:
                     bdi_tags = li_elem.find_all('bdi')
                     for bdi in bdi_tags:
                         text = bdi.get_text(strip=True)
                         if re.search(r'\d{3,}', text):
-                            price_str = text
+                            regular_price_str = text
                             break
                 
-                # Clean price
-                final_price = self.clean_price(price_str)
+                # Clean prices
+                regular_price = self.clean_price(regular_price_str) if regular_price_str else None
+                discount_price = self.clean_price(discount_price_str) if discount_price_str else None
+                
+                # Determine final price
+                final_price = discount_price if has_discount and discount_price else regular_price
                 
                 if not final_price:
                     logger.warning(f"No price found for: {name[:50]}")
                     continue
                 
-                # For Dim Kava, we only have final prices (our store)
+                # Build product dict
                 product = {
                     "index": idx,
                     "name": name,
-                    "regular_price": final_price,
-                    "regular_price_str": price_str,
-                    "discount_price": None,
-                    "discount_price_str": None,
+                    "regular_price": regular_price,
+                    "regular_price_str": regular_price_str,
+                    "discount_price": discount_price,
+                    "discount_price_str": discount_price_str,
                     "final_price": final_price,
-                    "has_discount": False,  # Our store prices (no competitor discount)
+                    "has_discount": has_discount,
                     "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "url": self.url,
                     "store": "DIM_KAVA",
