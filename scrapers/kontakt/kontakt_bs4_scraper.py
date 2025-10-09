@@ -163,10 +163,11 @@ class KontaktBS4Scraper:
                     logger.warning(f"Could not find price container for: {name[:50]}")
                     continue
                 
-                # Extract price from strong > i or strong > b
-                price_str = None
+                # Extract prices from strong > i or strong > b
+                # IMPORTANT: There can be multiple prices (regular + discount)
+                # We need to collect ALL prices and take the LAST one (final price)
+                all_prices = []
                 
-                # Try strong > i
                 strong_tags = price_container.find_all('strong')
                 for strong in strong_tags:
                     # Try i tag first
@@ -174,28 +175,34 @@ class KontaktBS4Scraper:
                     if i_tag:
                         price_text = i_tag.get_text(strip=True)
                         if re.search(r'\d{2,}', price_text):
-                            price_str = price_text
-                            break
+                            all_prices.append(price_text)
                     
                     # Try b tag
                     b_tag = strong.find('b')
                     if b_tag:
                         price_text = b_tag.get_text(strip=True)
                         if re.search(r'\d{2,}', price_text):
-                            price_str = price_text
-                            break
+                            all_prices.append(price_text)
                 
-                # Clean price
-                regular_price = self.clean_price(price_str)
-                
-                # Try to find discount (less common)
+                # Determine regular and discount prices
+                regular_price = None
                 discount_price = None
+                
+                if len(all_prices) >= 2:
+                    # Multiple prices = first is regular, last is discount (final)
+                    regular_price = self.clean_price(all_prices[0])
+                    discount_price = self.clean_price(all_prices[-1])
+                elif len(all_prices) == 1:
+                    # Single price = no discount
+                    regular_price = self.clean_price(all_prices[0])
+                    discount_price = None
                 
                 if regular_price:
                     delonghi_products.append({
                         'name': name,
-                        'price_str': price_str,
-                        'price': regular_price,
+                        'regular_price': regular_price,
+                        'discount_price': discount_price,
+                        'all_prices_found': all_prices,  # For debugging
                     })
                 
             except Exception as e:
@@ -206,15 +213,20 @@ class KontaktBS4Scraper:
         
         # Build final product list
         for idx, prod_data in enumerate(delonghi_products, 1):
+            regular = prod_data['regular_price']
+            discount = prod_data['discount_price']
+            has_discount = discount is not None and discount > 0 and discount < regular
+            final = discount if has_discount else regular
+            
             product = {
                 "index": idx,
                 "name": prod_data['name'],
-                "regular_price": prod_data['price'],
-                "regular_price_str": prod_data['price_str'],
-                "discount_price": None,
-                "discount_price_str": None,
-                "final_price": prod_data['price'],
-                "has_discount": False,
+                "regular_price": regular,
+                "regular_price_str": f"{regular:.2f}",
+                "discount_price": discount if has_discount else None,
+                "discount_price_str": f"{discount:.2f}" if has_discount else None,
+                "final_price": final,
+                "has_discount": has_discount,
                 "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "url": self.url,
                 "store": "KONTAKT",
