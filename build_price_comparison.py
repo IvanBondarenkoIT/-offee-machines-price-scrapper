@@ -242,19 +242,54 @@ class PriceComparisonBuilder:
         return df
     
     def save_comparison(self, df: pd.DataFrame) -> Path:
-        """Save comparison table to Excel"""
+        """Save comparison table to Excel with separate sheets for each source"""
         print("\n[5/6] Saving COMPARISON TABLE...")
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = self.output_dir / f'price_comparison_{timestamp}.xlsx'
         
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+            # Main comparison sheet
             df.to_excel(writer, sheet_name='Price Comparison', index=False)
             
             # Add statistics sheet
             stats = self.calculate_statistics(df)
             stats_df = pd.DataFrame([stats])
             stats_df.to_excel(writer, sheet_name='Statistics', index=False)
+            
+            # Add individual source sheets with full scraped data
+            print("  Adding individual source sheets...")
+            for source_name, source_df in self.scraped_data.items():
+                if not source_df.empty:
+                    # Select relevant columns
+                    cols = ['name', 'price', 'regular_price', 'discount_price', 'has_discount', 'url']
+                    available_cols = [c for c in cols if c in source_df.columns]
+                    sheet_df = source_df[available_cols].copy()
+                    
+                    # Rename for clarity
+                    sheet_df = sheet_df.rename(columns={
+                        'name': 'Product Name',
+                        'price': 'Price',
+                        'regular_price': 'Regular Price',
+                        'discount_price': 'Discount Price',
+                        'has_discount': 'Has Discount',
+                        'url': 'URL'
+                    })
+                    
+                    sheet_df.to_excel(writer, sheet_name=source_name, index=False)
+                    print(f"    [{source_name}] {len(sheet_df)} products")
+            
+            # Add INVENTORY sheet with our stock
+            inventory_data = self.load_inventory()
+            if not inventory_data.empty:
+                inventory_sheet = inventory_data[['name', 'quantity', 'price']].copy()
+                inventory_sheet = inventory_sheet.rename(columns={
+                    'name': 'Product Name',
+                    'quantity': 'Quantity',
+                    'price': 'Our Cost Price'
+                })
+                inventory_sheet.to_excel(writer, sheet_name='INVENTORY', index=False)
+                print(f"    [INVENTORY] {len(inventory_sheet)} products")
         
         print(f"[OK] Saved to: {output_file.name}")
         

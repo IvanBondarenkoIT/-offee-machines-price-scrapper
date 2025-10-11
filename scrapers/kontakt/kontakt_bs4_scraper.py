@@ -32,7 +32,7 @@ class KontaktBS4Scraper:
     """Fast scraper using BeautifulSoup after Selenium page load"""
     
     def __init__(self):
-        self.url = KONTAKT_CONFIG["url"]
+        self.urls = KONTAKT_CONFIG["urls"]  # Now supports multiple URLs
         self.driver = None
         self.products = []
         
@@ -57,10 +57,10 @@ class KontaktBS4Scraper:
         
         logger.info("WebDriver setup complete")
         
-    def load_all_products_selenium(self):
-        """Use Selenium to load page and click 'Load More'"""
-        logger.info(f"Loading page: {self.url}")
-        self.driver.get(self.url)
+    def load_all_products_selenium(self, url):
+        """Use Selenium to load page and click 'Load More' for a single URL"""
+        logger.info(f"Loading page: {url}")
+        self.driver.get(url)
         time.sleep(3)
         logger.info("Page loaded")
         
@@ -81,10 +81,11 @@ class KontaktBS4Scraper:
                     except:
                         pass
                 
-                logger.info(f"Current DeLonghi products: {delonghi_count}")
+                logger.info(f"Current DeLonghi products on this page: {delonghi_count}")
                 
-                if delonghi_count >= KONTAKT_CONFIG["expected_products"]:
-                    logger.info(f"All {delonghi_count} products loaded!")
+                # For small categories (like toasters with 2 items), break after loading
+                if delonghi_count >= 2:  # Assume at least 2 products per category
+                    logger.info(f"{delonghi_count} products loaded on this page")
                     break
             except:
                 pass
@@ -118,7 +119,7 @@ class KontaktBS4Scraper:
         
         logger.info("Finished loading all products")
     
-    def parse_with_bs4(self, html: str):
+    def parse_with_bs4(self, html: str, url: str):
         """Parse products using BeautifulSoup"""
         logger.info("Parsing with BeautifulSoup...")
         
@@ -228,7 +229,7 @@ class KontaktBS4Scraper:
                 "final_price": final,
                 "has_discount": has_discount,
                 "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "url": self.url,
+                "url": url,
                 "store": "KONTAKT",
             }
             
@@ -278,23 +279,38 @@ class KontaktBS4Scraper:
             logger.info("Browser closed")
     
     def run(self):
-        """Main execution method"""
+        """Main execution method - scrapes multiple URLs"""
         try:
             logger.info("=" * 60)
             logger.info("KONTAKT DeLonghi BS4 Scraper Started")
+            logger.info(f"Will scrape {len(self.urls)} categories")
             logger.info("=" * 60)
             
             self.setup_driver()
-            self.load_all_products_selenium()
             
-            html = self.driver.page_source
-            logger.info(f"Got HTML page source ({len(html)} chars)")
+            # Scrape each URL
+            for idx, url in enumerate(self.urls, 1):
+                category_name = "Coffee Machines" if "qavis-aparatebi" in url else "Toasters"
+                logger.info(f"\n[{idx}/{len(self.urls)}] Scraping category: {category_name}")
+                logger.info(f"URL: {url}")
+                
+                self.load_all_products_selenium(url)
+                
+                html = self.driver.page_source
+                logger.info(f"Got HTML page source ({len(html)} chars)")
+                
+                products_before = len(self.products)
+                self.parse_with_bs4(html, url)
+                products_added = len(self.products) - products_before
+                logger.info(f"Added {products_added} products from {category_name}")
+                
+                # Small delay between categories
+                time.sleep(2)
             
-            self.parse_with_bs4(html)
             self.save_results()
             
             logger.info("=" * 60)
-            logger.info(f"SUCCESS! Scraped {len(self.products)} products")
+            logger.info(f"SUCCESS! Scraped {len(self.products)} products total")
             logger.info("=" * 60)
             
         except Exception as e:

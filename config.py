@@ -24,10 +24,15 @@ ALTA_CONFIG = {
 
 # KONTAKT Configuration
 KONTAKT_CONFIG = {
-    "url": "https://kontakt.ge/en/samzareulos-teknika/samzareulos-tsvrili-teknika/qavis-aparatebi?kh_mtsarmoebeli=DeLonghi",
+    "urls": [
+        # Coffee machines
+        "https://kontakt.ge/en/samzareulos-teknika/samzareulos-tsvrili-teknika/qavis-aparatebi?kh_mtsarmoebeli=DeLonghi",
+        # Toasters
+        "https://kontakt.ge/en/samzareulos-teknika/samzareulos-tsvrili-teknika/tosteri?kh_mtsarmoebeli=DeLonghi",
+    ],
     "excel_file": INPUT_DIR / "Parsing kontakt.xlsx",
     "load_more_button_xpath": "/html/body/div[1]/main/div[4]/div/div[5]/div/div[2]/button",
-    "expected_products": 28,
+    "expected_products": 30,  # 28 coffee machines + 2 toasters
     "product_container_base": "/html/body/div[1]/main/div[4]/div/div[5]/div/div[2]/div[{index}]",
 }
 

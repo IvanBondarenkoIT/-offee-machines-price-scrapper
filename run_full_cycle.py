@@ -230,6 +230,65 @@ class FullCycleRunner:
         
         return True
     
+    def generate_executive_report(self):
+        """Generate Word and PDF reports for management"""
+        self.print_step(5, 6, "GENERATING EXECUTIVE REPORTS")
+        
+        try:
+            # Generate Word report
+            print("\nGenerating Word report...")
+            result = subprocess.run(
+                [sys.executable, 'generate_executive_report.py'],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=str(self.base_dir)
+            )
+            
+            if result.returncode != 0:
+                print(f"[WARNING] Word report generation failed: {result.stderr}")
+                return False
+            
+            print("  [OK] Word report created")
+            
+            # Convert to PDF
+            print("\nConverting to PDF...")
+            result = subprocess.run(
+                [sys.executable, 'convert_report_to_pdf.py'],
+                capture_output=True,
+                text=True,
+                timeout=120,  # Increased timeout to 2 minutes for PDF conversion
+                cwd=str(self.base_dir)
+            )
+            
+            if result.returncode != 0:
+                print(f"[WARNING] PDF conversion failed: {result.stderr}")
+                print("  [OK] Word report is available")
+                return True  # Word report is still OK
+            
+            print("  [OK] PDF report created")
+            
+            # Find the reports
+            output_dir = self.base_dir / 'data' / 'output'
+            word_files = list(output_dir.glob('executive_report_*.docx'))
+            pdf_files = list(output_dir.glob('executive_report_*.pdf'))
+            
+            if word_files:
+                latest_word = max(word_files, key=lambda x: x.stat().st_mtime)
+                print(f"\n  Word: {latest_word.name}")
+                self.results['word_report'] = latest_word.name
+            
+            if pdf_files:
+                latest_pdf = max(pdf_files, key=lambda x: x.stat().st_mtime)
+                print(f"  PDF:  {latest_pdf.name}")
+                self.results['pdf_report'] = latest_pdf.name
+            
+            return True
+            
+        except Exception as e:
+            print(f"[ERROR] Report generation failed: {e}")
+            return False
+    
     def run(self):
         """Run complete cycle"""
         self.print_header("FULL PRICE MONITORING CYCLE")
@@ -254,6 +313,11 @@ class FullCycleRunner:
             print("\n[ERROR] Failed to show results")
             return False
         
+        # Step 5: Generate executive reports
+        if not self.generate_executive_report():
+            print("\n[WARNING] Report generation failed, but data is available")
+            # Continue anyway - data is more important than report
+        
         # Final summary
         end_time = datetime.now()
         duration = (end_time - self.start_time).total_seconds()
@@ -271,6 +335,17 @@ class FullCycleRunner:
         print("\n" + "="*80)
         print("SUCCESS! All steps completed.")
         print("="*80)
+        
+        # Show where to find reports
+        if 'pdf_report' in self.results:
+            print(f"\n[EXECUTIVE REPORT] data/output/{self.results['pdf_report']}")
+            print("   Ready to send to director!")
+        elif 'word_report' in self.results:
+            print(f"\n[EXECUTIVE REPORT] data/output/{self.results['word_report']}")
+            print("   (PDF conversion failed, but Word report is ready)")
+        
+        print("\n[PRICE COMPARISON] data/output/price_comparison_*.xlsx")
+        print("   Detailed analysis with all prices")
         
         return True
 
