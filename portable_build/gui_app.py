@@ -271,15 +271,27 @@ class PriceMonitorGUI:
             self.log("\n[3/6] Поиск результатов...")
             
             source_output = SCRIPT_DIR / 'data' / 'output'
+            self.log(f"  Поиск в: {source_output}")
             
             # Find latest files
             excel_files = list(source_output.glob('price_comparison_*.xlsx'))
             word_files = list(source_output.glob('executive_report_*.docx'))
             pdf_files = list(source_output.glob('executive_report_*.pdf'))
             
+            self.log(f"  Найдено Excel: {len(excel_files)}")
+            self.log(f"  Найдено Word: {len(word_files)}")
+            self.log(f"  Найдено PDF: {len(pdf_files)}")
+            
             latest_excel = max(excel_files, key=lambda x: x.stat().st_mtime) if excel_files else None
             latest_word = max(word_files, key=lambda x: x.stat().st_mtime) if word_files else None
             latest_pdf = max(pdf_files, key=lambda x: x.stat().st_mtime) if pdf_files else None
+            
+            if latest_excel:
+                self.log(f"  Последний Excel: {latest_excel.name}")
+            if latest_word:
+                self.log(f"  Последний Word: {latest_word.name}")
+            if latest_pdf:
+                self.log(f"  Последний PDF: {latest_pdf.name}")
             
             # Step 4: Copy results
             self.update_progress("Шаг 4/6: Копирование результатов...")
@@ -287,23 +299,36 @@ class PriceMonitorGUI:
             
             results_copied = []
             
+            # Ensure output directories exist
+            self.config.paths['excel'].mkdir(parents=True, exist_ok=True)
+            self.config.paths['reports'].mkdir(parents=True, exist_ok=True)
+            
             if latest_excel:
                 dest = self.config.paths['excel'] / latest_excel.name
-                shutil.copy2(latest_excel, dest)
-                self.log(f"  ✓ Excel: {latest_excel.name}")
-                results_copied.append(('excel', dest))
+                try:
+                    shutil.copy2(latest_excel, dest)
+                    self.log(f"  ✓ Excel: {latest_excel.name}")
+                    results_copied.append(('excel', dest))
+                except Exception as e:
+                    self.log(f"  ✗ Ошибка копирования Excel: {e}")
             
             if latest_word:
                 dest = self.config.paths['reports'] / latest_word.name
-                shutil.copy2(latest_word, dest)
-                self.log(f"  ✓ Word:  {latest_word.name}")
-                results_copied.append(('word', dest))
+                try:
+                    shutil.copy2(latest_word, dest)
+                    self.log(f"  ✓ Word:  {latest_word.name}")
+                    results_copied.append(('word', dest))
+                except Exception as e:
+                    self.log(f"  ✗ Ошибка копирования Word: {e}")
             
             if latest_pdf:
                 dest = self.config.paths['reports'] / latest_pdf.name
-                shutil.copy2(latest_pdf, dest)
-                self.log(f"  ✓ PDF:   {latest_pdf.name}")
-                results_copied.append(('pdf', dest))
+                try:
+                    shutil.copy2(latest_pdf, dest)
+                    self.log(f"  ✓ PDF:   {latest_pdf.name}")
+                    results_copied.append(('pdf', dest))
+                except Exception as e:
+                    self.log(f"  ✗ Ошибка копирования PDF: {e}")
             
             # Step 5: Show statistics
             self.update_progress("Шаг 5/6: Анализ результатов...")
