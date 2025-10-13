@@ -35,6 +35,15 @@ def build_executable():
     if build_dir.exists():
         shutil.rmtree(build_dir)
     
+    # Check which script to build
+    gui_script = script_dir / 'gui_app.py'
+    
+    if gui_script.exists():
+        print("\n[INFO] Building GUI version (gui_app.py)")
+        main_script = gui_script
+    else:
+        print("\n[INFO] Building CLI version (portable_main.py)")
+    
     # PyInstaller command
     print("\n[2/4] Building executable...")
     cmd = [
@@ -50,6 +59,7 @@ def build_executable():
         '--hidden-import', 'openpyxl',
         '--hidden-import', 'docx',
         '--hidden-import', 'win32com',
+        '--hidden-import', 'tkinter',
         str(main_script)
     ]
     
