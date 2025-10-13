@@ -12,11 +12,19 @@ import subprocess
 from datetime import datetime
 import shutil
 
-# Add parent directory to path
-SCRIPT_DIR = Path(__file__).parent.parent
-sys.path.insert(0, str(SCRIPT_DIR))
+# Determine if running as script or frozen exe
+if getattr(sys, 'frozen', False):
+    # Running as compiled exe
+    SCRIPT_DIR = Path(sys.executable).parent
+    APP_DIR = SCRIPT_DIR
+else:
+    # Running as script
+    APP_DIR = Path(__file__).parent
+    SCRIPT_DIR = APP_DIR.parent
 
-from portable_build.config_loader import ConfigLoader
+# Import config_loader from same directory
+sys.path.insert(0, str(APP_DIR))
+from config_loader import ConfigLoader
 
 
 class PriceMonitorGUI:
