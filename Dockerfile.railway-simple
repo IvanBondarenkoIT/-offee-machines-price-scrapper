@@ -28,6 +28,9 @@ COPY --chown=appuser:appuser data/output/ ./data/output/
 # Debug: List files in data/output
 RUN ls -la data/output/ && echo "Total files:" && ls -1 data/output/ | wc -l
 
+# Fix permissions for appuser (in case COPY didn't set them correctly)
+RUN chown -R appuser:appuser data/output/
+
 # Switch to non-root user
 USER appuser
 
