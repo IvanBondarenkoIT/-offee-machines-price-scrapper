@@ -1,30 +1,18 @@
-# Dockerfile without Chrome for Railway
-# Memory efficient version - NO Selenium, NO Chrome
-# Uses only BeautifulSoup for scraping
+# MINIMAL TEST DOCKERFILE for Railway
+# No Chrome, no Selenium, no pandas - just FastAPI!
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install minimal system dependencies (no Chrome!)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Install ONLY FastAPI and Uvicorn (minimal dependencies)
+RUN pip install --no-cache-dir \
+    fastapi==0.109.0 \
+    uvicorn==0.27.0
 
-# Copy requirements
-COPY requirements.railway.txt requirements.txt
+# Copy ONLY minimal app
+COPY api_minimal.py .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Create directories
-RUN mkdir -p /app/data/inbox /app/data/output /app/logs
-
-# Run FastAPI server on port 8080
-CMD ["python", "-m", "uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
+# Run on port 8080 (Railway default)
+CMD ["python", "-m", "uvicorn", "api_minimal:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
 
