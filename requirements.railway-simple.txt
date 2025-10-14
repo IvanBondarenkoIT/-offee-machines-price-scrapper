@@ -1,0 +1,13 @@
+# Simplified requirements for Railway - Reports Viewer Only
+# NO Chrome, NO Selenium, NO heavy dependencies
+
+# Core web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# HTTP client (for health checks)
+requests==2.31.0
+
+# That's it! Minimal footprint for serving static files
+

@@ -40,7 +40,8 @@ ENV/
 
 # Data directories
 data/inbox/
-data/output/
+# data/output/ - TEMPORARILY ALLOW for Railway deployment
+# data/output/
 
 # Combined Excel files
 combined_prices_*.xlsx
