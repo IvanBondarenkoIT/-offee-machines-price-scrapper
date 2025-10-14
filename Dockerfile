@@ -92,6 +92,6 @@ EXPOSE 8080
 #     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Run FastAPI server directly (simplified for Railway)
-# Railway sets PORT env variable, we use 8080 as fallback
-CMD ["sh", "-c", "uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8080} --log-level info"]
+# Use explicit port 8080 for Railway
+CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
 
