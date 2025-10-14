@@ -5,7 +5,7 @@
 echo "========================================="
 echo "Starting Coffee Price Monitor API"
 echo "========================================="
-echo "PORT: ${PORT:-8000}"
+echo "PORT: ${PORT:-8080}"
 echo "PYTHON_ENV: ${PYTHON_ENV:-development}"
 echo "Working directory: $(pwd)"
 echo "Python version: $(python --version)"
@@ -15,10 +15,12 @@ echo "========================================="
 mkdir -p /app/data/inbox /app/data/output /app/logs
 
 # Start the FastAPI server
-# Railway sets PORT env variable
+# Railway sets PORT env variable (usually 8080)
+# MUST use exec to ensure proper signal handling
 exec uvicorn api_server:app \
     --host 0.0.0.0 \
-    --port ${PORT:-8000} \
+    --port ${PORT:-8080} \
     --log-level info \
-    --access-log
+    --access-log \
+    --no-access-log-format
 
