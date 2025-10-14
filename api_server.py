@@ -16,8 +16,22 @@ import json
 import asyncio
 from enum import Enum
 import shutil
+import logging
+import traceback
 # import openpyxl  # Moved to lazy import to reduce memory usage
 # import pandas as pd  # Moved to lazy import to reduce memory usage
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('logs/api_server.log', encoding='utf-8')
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -203,6 +217,7 @@ def run_full_cycle_background():
     global scraping_state
     
     try:
+        logger.info("Starting full cycle scraping...")
         scraping_state["status"] = ScrapingStatus.RUNNING
         scraping_state["started_at"] = datetime.now().isoformat()
         scraping_state["current_step"] = "Starting full cycle"
@@ -218,6 +233,7 @@ def run_full_cycle_background():
         )
         
         if result.returncode == 0:
+            logger.info("✓ Full cycle completed successfully")
             scraping_state["status"] = ScrapingStatus.COMPLETED
             scraping_state["completed_at"] = datetime.now().isoformat()
             scraping_state["current_step"] = "Completed"
@@ -228,14 +244,18 @@ def run_full_cycle_background():
                 # Try to extract total count
                 scraping_state["products_scraped"] = 183  # Default
         else:
+            logger.error(f"✗ Full cycle failed: {result.stderr[:500]}")
             scraping_state["status"] = ScrapingStatus.FAILED
             scraping_state["completed_at"] = datetime.now().isoformat()
             scraping_state["error"] = result.stderr[:500]
             
     except subprocess.TimeoutExpired:
+        logger.error("✗ Scraping timed out after 10 minutes")
         scraping_state["status"] = ScrapingStatus.FAILED
         scraping_state["error"] = "Scraping timed out after 10 minutes"
     except Exception as e:
+        logger.error(f"✗ Unexpected error during scraping: {e}")
+        logger.error(traceback.format_exc())
         scraping_state["status"] = ScrapingStatus.FAILED
         scraping_state["error"] = str(e)
 
@@ -599,8 +619,11 @@ async def upload_inventory(file: UploadFile = File(...)):
     
     This file will be used for price comparison
     """
+    logger.info(f"Upload request received: {file.filename}")
+    
     # Validate file extension
     if not file.filename.endswith(('.xls', '.xlsx')):
+        logger.warning(f"Invalid file format: {file.filename}")
         raise HTTPException(
             status_code=400,
             detail="Файл должен быть в формате .xls или .xlsx"
@@ -627,7 +650,10 @@ async def upload_inventory(file: UploadFile = File(...)):
     try:
         with open(target_file, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        logger.info(f"✓ File saved: {target_file}")
     except Exception as e:
+        logger.error(f"✗ Error saving file: {e}")
+        logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=500,
             detail=f"Ошибка при сохранении файла: {str(e)}"
@@ -636,9 +662,13 @@ async def upload_inventory(file: UploadFile = File(...)):
     # Save metadata
     upload_time = datetime.now()
     save_inventory_metadata(target_file.name, upload_time)
+    logger.info(f"✓ Metadata saved: {upload_time.strftime('%d.%m.%Y')}")
     
     # Count products
     products_count = count_inventory_products(target_file)
+    logger.info(f"✓ Products counted: {products_count}")
+    
+    logger.info(f"✓ Upload successful: {target_file.name}")
     
     return UploadResponse(
         status="success",
@@ -860,13 +890,23 @@ async def list_reports() -> List[ReportInfo]:
 @app.on_event("startup")
 async def startup_event():
     """Initialize on startup"""
-    print("=" * 70)
-    print("Coffee Price Monitoring API Started".center(70))
-    print("=" * 70)
-    print(f"Time: {datetime.now().isoformat()}")
-    print(f"Base directory: {get_base_dir()}")
-    print(f"Output directory: {get_output_dir()}")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("Coffee Price Monitoring API Started".center(70))
+    logger.info("=" * 70)
+    logger.info(f"Time: {datetime.now().isoformat()}")
+    logger.info(f"Base directory: {get_base_dir()}")
+    logger.info(f"Output directory: {get_output_dir()}")
+    logger.info(f"Inbox directory: {get_inbox_dir()}")
+    
+    # Create necessary directories
+    try:
+        get_output_dir().mkdir(parents=True, exist_ok=True)
+        get_inbox_dir().mkdir(parents=True, exist_ok=True)
+        logger.info("✓ Directories created/verified")
+    except Exception as e:
+        logger.error(f"✗ Error creating directories: {e}")
+    
+    logger.info("=" * 70)
 
 # For local testing
 if __name__ == "__main__":
