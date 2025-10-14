@@ -83,13 +83,18 @@ RUN mkdir -p data/output data/inbox logs && \
 # Switch to non-root user
 USER appuser
 
-# Expose port (Railway will set PORT env variable)
+# Expose port (Railway will set PORT env variable dynamically)
+# Note: Railway ignores EXPOSE, uses PORT env variable
 EXPOSE 8000
 
-# Health check
+# Health check (Railway uses PORT env variable, not fixed 8000)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Run FastAPI server
-CMD uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8000}
+# Copy startup script (before switching to appuser)
+COPY --chown=appuser:appuser start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Run FastAPI server via startup script
+CMD ["/bin/bash", "/app/start.sh"]
 
