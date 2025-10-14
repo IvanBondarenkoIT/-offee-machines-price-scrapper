@@ -24,7 +24,8 @@ RUN pip install --no-cache-dir \
     beautifulsoup4==4.12.3 \
     lxml==5.3.0 \
     requests==2.31.0 \
-    python-dotenv==1.0.1
+    python-dotenv==1.0.1 \
+    xlrd>=2.0.1
 
 # pandas installed but imported lazily (only when needed)
 RUN pip install --no-cache-dir pandas==2.1.4

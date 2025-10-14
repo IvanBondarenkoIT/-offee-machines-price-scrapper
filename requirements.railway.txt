@@ -10,6 +10,7 @@ openpyxl==3.1.4
 pandas==2.1.4
 python-dotenv==1.0.1
 python-docx==1.2.0
+xlrd>=2.0.1  # For reading .xls files
 
 # FastAPI and web server (for Railway)
 fastapi==0.109.0

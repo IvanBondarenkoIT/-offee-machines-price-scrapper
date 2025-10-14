@@ -166,10 +166,25 @@ def count_inventory_products(file_path: Path) -> int:
     try:
         # Lazy import to reduce memory footprint at startup
         import pandas as pd
-        df = pd.read_excel(file_path)
-        return len(df)
+        logger.info(f"Reading inventory file: {file_path}")
+        
+        # Read Excel file
+        df = pd.read_excel(file_path, engine='xlrd' if file_path.suffix == '.xls' else 'openpyxl')
+        logger.info(f"Total rows (including headers): {len(df)}")
+        
+        # Remove completely empty rows
+        df_data = df.dropna(how='all')
+        logger.info(f"Rows with data: {len(df_data)}")
+        
+        # Count rows that have at least some product data
+        # (skip header rows that might have category names only)
+        products_count = len(df_data)
+        
+        logger.info(f"Final product count: {products_count}")
+        return products_count
     except Exception as e:
-        print(f"Warning: Could not count products: {e}")
+        logger.error(f"Error counting products: {e}")
+        logger.error(traceback.format_exc())
         return 0
 
 def get_latest_file(pattern: str) -> Optional[Path]:
