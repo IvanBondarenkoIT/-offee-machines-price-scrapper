@@ -6,17 +6,30 @@
 
 ### 📁 [railway/](railway/) - Деплой на Railway.com
 
+**🎉 Приложение успешно развернуто!**  
+**URL**: https://offee-machines-price-scrapper-production.up.railway.app/
+
 Все о размещении проекта в облаке Railway:
 
-- **[QUICK_START_RAILWAY.md](railway/QUICK_START_RAILWAY.md)** ⚡ - Быстрый старт (5 минут)
-- **[README_RAILWAY.md](railway/README_RAILWAY.md)** - Полная документация Railway
-- **[RAILWAY_DEPLOY.md](railway/RAILWAY_DEPLOY.md)** - Пошаговая инструкция деплоя
+#### 📖 Основная документация:
+- **[RAILWAY_SUCCESS.md](railway/RAILWAY_SUCCESS.md)** ⭐ - Успешный деплой!
+- **[QUICK_START_RAILWAY.md](railway/QUICK_START_RAILWAY.md)** ⚡ - Быстрый старт
+- **[README_RAILWAY.md](railway/README_RAILWAY.md)** - Полная документация
+- **[RAILWAY_DEPLOY.md](railway/RAILWAY_DEPLOY.md)** - Пошаговая инструкция
 - **[RAILWAY_DEPLOYMENT_PLAN.md](railway/RAILWAY_DEPLOYMENT_PLAN.md)** - Детальный план
-- **[INVENTORY_UPLOAD_GUIDE.md](railway/INVENTORY_UPLOAD_GUIDE.md)** - Загрузка остатков
+- **[NO_CHROME_ARCHITECTURE.md](railway/NO_CHROME_ARCHITECTURE.md)** - Архитектура без Chrome
+
+#### 📤 Загрузка остатков:
+- **[INVENTORY_UPLOAD_GUIDE.md](railway/INVENTORY_UPLOAD_GUIDE.md)** - Загрузка и дата
+
+#### 🔧 Техническая информация:
 - **[RAILWAY_FEATURES.md](railway/RAILWAY_FEATURES.md)** - Новые функции
-- **[RAILWAY_FIXES.md](railway/RAILWAY_FIXES.md)** - Исправления ошибок
+- **[RAILWAY_FIXES.md](railway/RAILWAY_FIXES.md)** - Исправления
 - **[RAILWAY_SUMMARY.md](railway/RAILWAY_SUMMARY.md)** - Итоговый отчет
 - **[DOCKERFILE_FIX.md](railway/DOCKERFILE_FIX.md)** - Исправление Dockerfile
+
+#### 🐛 Отладка (debug/):
+- [debug/](railway/debug/) - Все отладочные файлы (9 документов)
 
 ### 📁 [general/](general/) - Общая документация
 
