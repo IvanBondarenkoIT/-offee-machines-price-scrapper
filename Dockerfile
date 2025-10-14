@@ -81,8 +81,7 @@ RUN mkdir -p data/output data/inbox logs && \
     chown -R appuser:appuser data logs
 
 # Switch to non-root user
-# TEMPORARILY DISABLED FOR DEBUGGING - Railway may not support non-root
-# USER appuser
+USER appuser
 
 # Expose port (Railway uses 8080 by default)
 # Note: Railway ignores EXPOSE, uses PORT env variable
