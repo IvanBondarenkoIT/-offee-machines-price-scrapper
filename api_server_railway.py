@@ -356,7 +356,7 @@ async def list_reports():
     return {"reports": list_all_reports()}
 
 @app.get("/reports/latest/{report_type}")
-async def get_latest_report(report_type: str):
+async def get_latest_report_endpoint(report_type: str):
     """Download the latest report of specified type"""
     
     extensions = {
@@ -368,7 +368,9 @@ async def get_latest_report(report_type: str):
     if report_type not in extensions:
         raise HTTPException(status_code=400, detail="Invalid report type. Use: excel, word, or pdf")
     
+    logger.info(f"Getting latest {report_type} report...")
     latest_file = get_latest_report(extensions[report_type])
+    logger.info(f"Found file: {latest_file}")
     
     if not latest_file or not latest_file.exists():
         raise HTTPException(
@@ -377,7 +379,7 @@ async def get_latest_report(report_type: str):
         )
     
     return FileResponse(
-        latest_file,
+        str(latest_file),  # Convert Path to string for FileResponse
         media_type="application/octet-stream",
         filename=latest_file.name
     )
@@ -396,7 +398,7 @@ async def download_report(filename: str):
         raise HTTPException(status_code=404, detail="Report not found")
     
     return FileResponse(
-        file_path,
+        str(file_path),  # Convert Path to string for FileResponse
         media_type="application/octet-stream",
         filename=filename
     )
