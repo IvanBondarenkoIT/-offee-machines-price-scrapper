@@ -248,7 +248,7 @@ def run_full_cycle_background():
         )
         
         if result.returncode == 0:
-            logger.info("✓ Full cycle completed successfully")
+            logger.info("[OK] Full cycle completed successfully")
             scraping_state["status"] = ScrapingStatus.COMPLETED
             scraping_state["completed_at"] = datetime.now().isoformat()
             scraping_state["current_step"] = "Completed"
@@ -259,17 +259,17 @@ def run_full_cycle_background():
                 # Try to extract total count
                 scraping_state["products_scraped"] = 183  # Default
         else:
-            logger.error(f"✗ Full cycle failed: {result.stderr[:500]}")
+            logger.error(f"[ERROR] Full cycle failed: {result.stderr[:500]}")
             scraping_state["status"] = ScrapingStatus.FAILED
             scraping_state["completed_at"] = datetime.now().isoformat()
             scraping_state["error"] = result.stderr[:500]
             
     except subprocess.TimeoutExpired:
-        logger.error("✗ Scraping timed out after 10 minutes")
+        logger.error("[ERROR] Scraping timed out after 10 minutes")
         scraping_state["status"] = ScrapingStatus.FAILED
         scraping_state["error"] = "Scraping timed out after 10 minutes"
     except Exception as e:
-        logger.error(f"✗ Unexpected error during scraping: {e}")
+        logger.error(f"[ERROR] Unexpected error during scraping: {e}")
         logger.error(traceback.format_exc())
         scraping_state["status"] = ScrapingStatus.FAILED
         scraping_state["error"] = str(e)
@@ -665,9 +665,9 @@ async def upload_inventory(file: UploadFile = File(...)):
     try:
         with open(target_file, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        logger.info(f"✓ File saved: {target_file}")
+        logger.info(f"[OK] File saved: {target_file}")
     except Exception as e:
-        logger.error(f"✗ Error saving file: {e}")
+        logger.error(f"[ERROR] Error saving file: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=500,
@@ -677,13 +677,13 @@ async def upload_inventory(file: UploadFile = File(...)):
     # Save metadata
     upload_time = datetime.now()
     save_inventory_metadata(target_file.name, upload_time)
-    logger.info(f"✓ Metadata saved: {upload_time.strftime('%d.%m.%Y')}")
+    logger.info(f"[OK] Metadata saved: {upload_time.strftime('%d.%m.%Y')}")
     
     # Count products
     products_count = count_inventory_products(target_file)
-    logger.info(f"✓ Products counted: {products_count}")
+    logger.info(f"[OK] Products counted: {products_count}")
     
-    logger.info(f"✓ Upload successful: {target_file.name}")
+    logger.info(f"[OK] Upload successful: {target_file.name}")
     
     return UploadResponse(
         status="success",
@@ -917,9 +917,9 @@ async def startup_event():
     try:
         get_output_dir().mkdir(parents=True, exist_ok=True)
         get_inbox_dir().mkdir(parents=True, exist_ok=True)
-        logger.info("✓ Directories created/verified")
+        logger.info("[OK] Directories created/verified")
     except Exception as e:
-        logger.error(f"✗ Error creating directories: {e}")
+        logger.error(f"[ERROR] Error creating directories: {e}")
     
     logger.info("=" * 70)
 
