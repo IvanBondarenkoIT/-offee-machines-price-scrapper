@@ -72,4 +72,15 @@ Thumbs.db
 
 # Env files
 .env
+.env.local
+
+# Railway
+.railway/
+railway-runtime.txt
+
+# Docker
+.dockerignore.swp
+
+# Metadata files (generated at runtime)
+data/inbox/inventory_metadata.json
 

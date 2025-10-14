@@ -61,7 +61,7 @@ SELENIUM_CONFIG = {
     "page_load_timeout": 30,
     "load_more_wait": 1,  # Seconds to wait after clicking "Load More"
     "max_load_more_attempts": 30,  # Increased for 74 products
-    "headless": False,  # Set to True to run without browser window
+    "headless": True,  # Set to True to run without browser window (required for Railway)
 }
 
 # User agents for rotation (if needed)
