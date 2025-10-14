@@ -20,7 +20,10 @@ RUN useradd -m -u 1000 appuser && \
 
 # Copy application files
 COPY --chown=appuser:appuser api_server_railway.py .
-COPY --chown=appuser:appuser data/output/* data/output/ 2>/dev/null || true
+
+# Copy output directory (if exists in repo)
+# Files will be added via git commits from local PC
+COPY --chown=appuser:appuser data/output ./data/output/
 
 # Switch to non-root user
 USER appuser
