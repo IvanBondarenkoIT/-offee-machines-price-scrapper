@@ -513,27 +513,72 @@ async def root():
                 try {{
                     const response = await fetch('/scrape/all', {{method: 'POST'}});
                     
+                    // Get response data
+                    const data = await response.json();
+                    
+                    // Handle different status codes
                     if (response.status === 503) {{
-                        const data = await response.json();
+                        // Scraping not available
                         statusDiv.style.background = '#fff3cd';
-                        statusDiv.innerHTML = `⚠️ ${{data.detail}}<br><br>` +
-                            `<strong>Рекомендуемый workflow:</strong><br>` +
-                            `1. Запустите скрапинг локально: <code>python run_full_cycle.py</code><br>` +
-                            `2. Загрузите файл остатков через форму выше<br>` +
-                            `3. Используйте Railway для отображения даты актуальности`;
+                        statusDiv.innerHTML = `
+                            <div style="padding: 15px;">
+                                <h3 style="margin-top: 0;">⚠️ Скрапинг недоступен на Railway</h3>
+                                <p>${{data.detail}}</p>
+                                <hr>
+                                <strong>Рекомендуемый workflow:</strong>
+                                <ol style="text-align: left; margin: 10px 0;">
+                                    <li>Запустите скрапинг локально: <code>python run_full_cycle.py</code></li>
+                                    <li>Загрузите обновленный файл остатков через форму выше</li>
+                                    <li>Railway покажет актуальную дату остатков</li>
+                                </ol>
+                                <p style="font-size: 12px; color: #666;">
+                                    <strong>Причина:</strong> Скрапинг требует Chrome/Selenium (не установлены на Railway для экономии памяти)
+                                </p>
+                            </div>
+                        `;
                         return;
                     }}
                     
-                    const data = await response.json();
+                    if (response.status === 409) {{
+                        // Already running
+                        statusDiv.style.background = '#fff3cd';
+                        statusDiv.innerHTML = `⚠️ ${{data.detail}}`;
+                        return;
+                    }}
                     
+                    if (!response.ok) {{
+                        // Other errors
+                        statusDiv.style.background = '#f8d7da';
+                        statusDiv.innerHTML = `
+                            <div style="padding: 15px;">
+                                <h4 style="margin-top: 0;">❌ Ошибка запуска скрапинга</h4>
+                                <p><strong>HTTP статус:</strong> ${{response.status}}</p>
+                                <p><strong>Детали:</strong> ${{data.detail || JSON.stringify(data)}}</p>
+                                <hr>
+                                <p style="font-size: 12px;">Проверьте логи сервера или попробуйте позже</p>
+                            </div>
+                        `;
+                        return;
+                    }}
+                    
+                    // Success - started
                     statusDiv.style.background = '#d4edda';
-                    statusDiv.innerHTML = `✅ ${{data.message}}<br>Проверяйте статус на /status`;
+                    statusDiv.innerHTML = `✅ ${{data.message}}<br><small>Проверяйте /status для прогресса</small>`;
                     
                     // Start checking status
                     checkStatus();
+                    
                 }} catch (error) {{
                     statusDiv.style.background = '#f8d7da';
-                    statusDiv.innerHTML = `❌ Ошибка: ${{error.message}}`;
+                    statusDiv.innerHTML = `
+                        <div style="padding: 15px;">
+                            <h4 style="margin-top: 0;">❌ Ошибка соединения</h4>
+                            <p><strong>Тип:</strong> ${{error.name}}</p>
+                            <p><strong>Сообщение:</strong> ${{error.message}}</p>
+                            <hr>
+                            <p style="font-size: 12px;">Проверьте подключение к серверу</p>
+                        </div>
+                    `;
                 }}
             }}
             
