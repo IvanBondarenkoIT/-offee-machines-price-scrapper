@@ -91,10 +91,7 @@ EXPOSE 8080
 # HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# Copy startup script (before switching to appuser)
-COPY --chown=appuser:appuser start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-# Run FastAPI server via startup script
-CMD ["/bin/bash", "/app/start.sh"]
+# Run FastAPI server directly (simplified for Railway)
+# Railway sets PORT env variable, we use 8080 as fallback
+CMD ["sh", "-c", "uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8080} --log-level info"]
 
