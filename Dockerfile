@@ -83,13 +83,13 @@ RUN mkdir -p data/output data/inbox logs && \
 # Switch to non-root user
 USER appuser
 
-# Expose port (Railway will set PORT env variable dynamically)
+# Expose port (Railway uses 8080 by default)
 # Note: Railway ignores EXPOSE, uses PORT env variable
-EXPOSE 8000
+EXPOSE 8080
 
-# Health check (Railway uses PORT env variable, not fixed 8000)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
+# Health check (disabled for Railway - they handle it differently)
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Copy startup script (before switching to appuser)
 COPY --chown=appuser:appuser start.sh /app/start.sh
