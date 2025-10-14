@@ -512,6 +512,18 @@ async def root():
                 
                 try {{
                     const response = await fetch('/scrape/all', {{method: 'POST'}});
+                    
+                    if (response.status === 503) {{
+                        const data = await response.json();
+                        statusDiv.style.background = '#fff3cd';
+                        statusDiv.innerHTML = `⚠️ ${{data.detail}}<br><br>` +
+                            `<strong>Рекомендуемый workflow:</strong><br>` +
+                            `1. Запустите скрапинг локально: <code>python run_full_cycle.py</code><br>` +
+                            `2. Загрузите файл остатков через форму выше<br>` +
+                            `3. Используйте Railway для отображения даты актуальности`;
+                        return;
+                    }}
+                    
                     const data = await response.json();
                     
                     statusDiv.style.background = '#d4edda';
@@ -734,20 +746,31 @@ async def scrape_all(background_tasks: BackgroundTasks):
     - DIM_KAVA (dimkava.ge) (41 products)
     
     Total: 183 products in ~2-3 minutes
+    
+    NOTE: Scraping requires Selenium which is not available on Railway.
+    This endpoint works only when running locally.
     """
     global scraping_state
+    
+    # Check if scrapers exist
+    scrapers_dir = get_base_dir() / "scrapers"
+    if not scrapers_dir.exists():
+        raise HTTPException(
+            status_code=503,
+            detail="⚠️ Скрапинг недоступен на Railway. Используйте локально: python run_full_cycle.py"
+        )
     
     if scraping_state["status"] == ScrapingStatus.RUNNING:
         raise HTTPException(
             status_code=409,
-            detail="Scraping is already in progress"
+            detail="Скрапинг уже выполняется"
         )
     
     background_tasks.add_task(run_full_cycle_background)
     
     return ScrapeResponse(
         status="started",
-        message="Full cycle scraping started in background. Check /status for progress.",
+        message="Скрапинг запущен в фоне. Проверяйте /status для прогресса.",
         started_at=datetime.now().isoformat()
     )
 
