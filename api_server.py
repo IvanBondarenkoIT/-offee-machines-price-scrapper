@@ -16,7 +16,8 @@ import json
 import asyncio
 from enum import Enum
 import shutil
-import openpyxl
+# import openpyxl  # Moved to lazy import to reduce memory usage
+# import pandas as pd  # Moved to lazy import to reduce memory usage
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -149,10 +150,12 @@ def load_inventory_metadata() -> Optional[dict]:
 def count_inventory_products(file_path: Path) -> int:
     """Count products in inventory file"""
     try:
+        # Lazy import to reduce memory footprint at startup
         import pandas as pd
         df = pd.read_excel(file_path)
         return len(df)
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Could not count products: {e}")
         return 0
 
 def get_latest_file(pattern: str) -> Optional[Path]:
