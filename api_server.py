@@ -797,12 +797,13 @@ async def scrape_all(background_tasks: BackgroundTasks):
     """
     global scraping_state
     
-    # Check if scrapers exist
+    # Check if scrapers exist (they should now - we're using Dockerfile.full with Chrome!)
     scrapers_dir = get_base_dir() / "scrapers"
     if not scrapers_dir.exists():
+        logger.warning("Scrapers directory not found - may be running without full deployment")
         raise HTTPException(
             status_code=503,
-            detail="⚠️ Скрапинг недоступен на Railway. Используйте локально: python run_full_cycle.py"
+            detail="⚠️ Скрапинг недоступен. Убедитесь что scrapers/ скопированы в контейнер."
         )
     
     if scraping_state["status"] == ScrapingStatus.RUNNING:

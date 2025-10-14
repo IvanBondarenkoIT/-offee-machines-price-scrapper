@@ -92,15 +92,7 @@ EXPOSE 8080
 # HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# Run FastAPI server directly (simplified for Railway)
-# Use shell form to support echo and shell commands
-CMD echo "========== Starting Coffee Price Monitor API ==========" && \
-    echo "Working directory: $(pwd)" && \
-    echo "Files in /app:" && ls -la /app | head -20 && \
-    echo "Python version:" && python --version && \
-    echo "Checking api_server.py:" && ls -la api_server.py && \
-    echo "Testing Python import:" && python -c "import sys; print('Python executable:', sys.executable)" && \
-    echo "Testing api_server import:" && python -c "import api_server; print('api_server imported successfully')" && \
-    echo "Starting uvicorn on port 8080..." && \
-    exec python -m uvicorn api_server:app --host 0.0.0.0 --port 8080 --log-level debug
+# Run FastAPI server
+# Hobby Plan with 8GB RAM - Chrome and Selenium work perfectly!
+CMD ["python", "-m", "uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
 
