@@ -25,6 +25,9 @@ COPY --chown=appuser:appuser api_server_railway.py .
 # Files will be added via git commits from local PC
 COPY --chown=appuser:appuser data/output/ ./data/output/
 
+# Debug: List files in data/output
+RUN ls -la data/output/ && echo "Total files:" && ls -1 data/output/ | wc -l
+
 # Switch to non-root user
 USER appuser
 
