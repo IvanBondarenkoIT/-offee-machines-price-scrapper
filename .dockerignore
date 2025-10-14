@@ -48,8 +48,9 @@ htmlcov/
 logs/
 *.log.*
 
-# Data (don't include in Docker image, use volumes)
-data/output/*
+# Data directories
+# NOTE: data/output/ IS included for Railway deployment (contains reports)
+# data/output/*  <- COMMENTED OUT to allow reports in Railway
 data/inbox/*.xlsx
 data/inbox/*.xls
 
