@@ -20,14 +20,23 @@ RUN pip install --no-cache-dir \
     aiofiles==23.2.1 \
     python-multipart \
     openpyxl==3.1.4 \
-    python-docx==1.2.0
+    python-docx==1.2.0 \
+    beautifulsoup4==4.12.3 \
+    lxml==5.3.0 \
+    requests==2.31.0 \
+    python-dotenv==1.0.1
 
 # pandas installed but imported lazily (only when needed)
 RUN pip install --no-cache-dir pandas==2.1.4
 
-# Copy ONLY necessary files
+# Copy necessary files and folders
 COPY api_server.py .
 COPY config.py .
+COPY scrapers/ ./scrapers/
+COPY utils/ ./utils/
+COPY run_full_cycle.py .
+COPY build_price_comparison.py .
+COPY generate_executive_report.py .
 
 # Create directories
 RUN mkdir -p /app/data/inbox /app/data/output /app/logs
