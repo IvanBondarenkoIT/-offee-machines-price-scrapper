@@ -1,0 +1,33 @@
+# Simplified Dockerfile for Railway - Reports Viewer Only
+# NO Chrome, NO Selenium - just FastAPI serving static reports
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install only essential dependencies
+RUN pip install --no-cache-dir --upgrade pip
+
+# Copy requirements (simplified version)
+COPY requirements.railway-simple.txt .
+RUN pip install --no-cache-dir -r requirements.railway-simple.txt
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p data/output logs && \
+    chown -R appuser:appuser data logs
+
+# Copy application files
+COPY --chown=appuser:appuser api_server_railway.py .
+COPY --chown=appuser:appuser data/output/* data/output/ 2>/dev/null || true
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Run the simplified API server
+CMD ["python", "-m", "uvicorn", "api_server_railway:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
+
