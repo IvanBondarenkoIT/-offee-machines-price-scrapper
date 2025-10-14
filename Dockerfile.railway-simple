@@ -23,7 +23,7 @@ COPY --chown=appuser:appuser api_server_railway.py .
 
 # Copy output directory (if exists in repo)
 # Files will be added via git commits from local PC
-COPY --chown=appuser:appuser data/output ./data/output/
+COPY --chown=appuser:appuser data/output/ ./data/output/
 
 # Switch to non-root user
 USER appuser
