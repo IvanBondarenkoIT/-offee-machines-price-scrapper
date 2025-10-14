@@ -93,5 +93,12 @@ EXPOSE 8080
 
 # Run FastAPI server directly (simplified for Railway)
 # Use explicit port 8080 for Railway
-CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
+# Add diagnostic output to see if CMD is executed
+CMD echo "========== Starting Coffee Price Monitor API ==========" && \
+    echo "Working directory: $(pwd)" && \
+    echo "Files in /app:" && ls -la /app && \
+    echo "Python version: $(python --version)" && \
+    echo "Uvicorn version: $(python -m uvicorn --version)" && \
+    echo "Starting uvicorn on port 8080..." && \
+    exec uvicorn api_server:app --host 0.0.0.0 --port 8080 --log-level info
 
