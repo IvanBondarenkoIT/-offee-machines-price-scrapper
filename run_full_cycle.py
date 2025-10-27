@@ -89,6 +89,11 @@ class FullCycleRunner:
                 'name': 'DIM_KAVA',
                 'path': self.base_dir / 'scrapers' / 'dimkava' / 'dimkava_bs4_scraper.py',
                 'expected': 41
+            },
+            {
+                'name': 'COFFEEHUB',
+                'path': self.base_dir / 'scrapers' / 'coffeehub' / 'coffeehub_bs4_scraper.py',
+                'expected': 50
             }
         ]
         

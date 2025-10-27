@@ -44,7 +44,7 @@ class PriceComparisonBuilder:
                 continue
             
             row_str = ' '.join([str(v) for v in row_values])
-            if 'delonghi' not in row_str.lower():
+            if 'delonghi' not in row_str.lower() and 'melitta' not in row_str.lower():
                 continue
             
             try:
@@ -57,7 +57,7 @@ class PriceComparisonBuilder:
                 elif len(row_values) == 7:
                     name, qty, price = str(row_values[1]), row_values[4], row_values[5]
                 
-                if name and 'delonghi' in name.lower():
+                if name and ('delonghi' in name.lower() or 'melitta' in name.lower()):
                     if isinstance(qty, (int, float)) and isinstance(price, (int, float)):
                         if qty > 0 and price > 0:
                             products.append({
@@ -82,6 +82,7 @@ class PriceComparisonBuilder:
             'KONTAKT': 'kontakt_*_prices_*.xlsx',
             'ELITE': 'elite_*_prices_*.xlsx',
             'DIM_KAVA': 'dimkava_*_prices_*.xlsx',
+            'COFFEEHUB': 'coffeehub_prices_*.xlsx',
         }
         
         result = {}
@@ -138,16 +139,36 @@ class PriceComparisonBuilder:
                     # Normalize for matching
                     model_normalized = ModelExtractor.normalize_for_matching(model)
                     
+                    # Normalize price data for different scraper formats
+                    if 'final_price' in row:
+                        # ALTA/KONTAKT/ELITE format
+                        price = row['final_price']
+                        regular_price = row.get('regular_price')
+                        discount_price = row.get('discount_price')
+                        has_discount = row.get('has_discount', False)
+                    elif 'price' in row:
+                        # CoffeeHub format
+                        price = row['price']
+                        regular_price = row.get('price') if not pd.isna(row.get('price')) else None
+                        discount_price = row.get('discount_price') if not pd.isna(row.get('discount_price')) else None
+                        has_discount = discount_price is not None and discount_price != price
+                    else:
+                        # Fallback
+                        price = row.get('price', 0)
+                        regular_price = row.get('regular_price', price)
+                        discount_price = row.get('discount_price')
+                        has_discount = row.get('has_discount', False)
+                    
                     all_products.append({
                         'source': source_name,
                         'name': row['name'],
                         'model': model,  # Original model
                         'model_normalized': model_normalized,  # For matching
                         'quantity': None,
-                        'price': row['final_price'],
-                        'regular_price': row.get('regular_price'),
-                        'discount_price': row.get('discount_price'),
-                        'has_discount': row.get('has_discount', False)
+                        'price': price,
+                        'regular_price': regular_price,
+                        'discount_price': discount_price,
+                        'has_discount': has_discount
                     })
         
         # Build model mapping using NORMALIZED models
@@ -220,13 +241,22 @@ class PriceComparisonBuilder:
             }
             
             # Add competitor prices - DIM_KAVA first (our website), then others
-            for source in ['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE']:
+            for source in ['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE', 'COFFEEHUB']:
                 if source in competitor_products:
                     p = competitor_products[source]
                     if p['has_discount'] and p['regular_price'] and p['discount_price']:
                         row[source] = f"{p['regular_price']:.0f} \\ {p['discount_price']:.0f}"
                     else:
-                        row[source] = f"{p['price']:.0f}"
+                        # Use regular_price if available and valid, otherwise price
+                        regular_price = p.get('regular_price')
+                        price = p.get('price')
+                        
+                        if regular_price and not pd.isna(regular_price):
+                            row[source] = f"{regular_price:.0f}"
+                        elif price and not pd.isna(price):
+                            row[source] = f"{price:.0f}"
+                        else:
+                            row[source] = '-'
                 else:
                     row[source] = '-'
             

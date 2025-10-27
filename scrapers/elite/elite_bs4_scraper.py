@@ -50,12 +50,14 @@ class EliteBS4Scraper:
         
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
-        self.driver.set_page_load_timeout(SELENIUM_CONFIG["page_load_timeout"])
+        # Increase timeout for slow sites
+        self.driver.set_page_load_timeout(60)  # 60 seconds instead of default
+        self.driver.implicitly_wait(10)  # Wait for elements
         
         logger.info("WebDriver setup complete")
         
     def scrape_page(self, page_num: int) -> List[Dict]:
-        """Scrape products from a single page"""
+        """Scrape products from a single page with retry logic"""
         # Build URL
         if page_num == 1:
             url = self.url_base
@@ -63,8 +65,21 @@ class EliteBS4Scraper:
             url = f"{self.url_base}?page={page_num}"
         
         logger.info(f"Loading page {page_num}: {url}")
-        self.driver.get(url)
-        time.sleep(4)  # Wait for JS to load
+        
+        # Retry logic for slow sites
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.driver.get(url)
+                time.sleep(6)  # Increased wait time for slow sites
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying...")
+                    time.sleep(5)  # Wait before retry
+                else:
+                    logger.error(f"All {max_retries} attempts failed for page {page_num}")
+                    raise
         
         # Get HTML
         html = self.driver.page_source

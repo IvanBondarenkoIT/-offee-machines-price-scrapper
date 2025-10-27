@@ -1,0 +1,44 @@
+﻿index,name,regular_price,regular_price_str,discount_price,discount_price_str,final_price,has_discount,scraped_at,url,store,page
+1,DeLonghi Dedica Duo EC890.M,849.99,849.99₾,,,849.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+2,DELONGHI ECAM310.60.B,2599.99,2599.99₾,1799.99,1799.99₾,1799.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+3,DELONGHI ECAM22.110.SB,1699.99,1699.99₾,1099.99,1099.99₾,1099.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+4,DeLonghi Dedica Arte Grey EC885.GY,819.99,819.99₾,699.99,699.99₾,699.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+5,Delonghi Eletta Explore Silver ECAM450.6 ...,3299.99,3299.99₾,2639.99,2639.99₾,2639.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+6,DeLonghi Dedica Duo ‎EC890.WI,849.99,849.99₾,,,849.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+7,DeLonghi Eletta Explore ECAM450.55.S,3299.99,3299.99₾,2299.99,2299.99₾,2299.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+8,Delonghi Eletta Explore Titanium ECAM450 ...,3799.99,3799.99₾,3039.99,3039.99₾,3039.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+9,Delonghi Magnifica Plus MC INT1 DL ECAM3 ...,2599.99,2599.99₾,1799.99,1799.99₾,1799.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+10,DeLonghi Magnifica Evo ECAM290.61.B,2099.99,2099.99₾,1459.99,1459.99₾,1459.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+11,DeLonghi Dedica Duo Espresso Machine wit ...,849.99,849.99₾,,,849.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+12,DeLonghi PrimaDonna Aromatic ECAM630.55. ...,4999.99,4999.99₾,,,4999.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+13,DeLonghi PrimaDonna Aromatic ECAM630.55. ...,4999.99,4999.99₾,,,4999.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+14,DeLonghi Dinamica Plus ECAM380.95.TB,2999.99,2999.99₾,2549.99,2549.99₾,2549.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+15,DeLonghi Maestosa EPAM960.75.GLM,8699.99,8699.99₾,6959.99,6959.99₾,6959.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+16,DeLonghi Dedica Arte Beige Gold EC885.BG,819.99,819.99₾,,,819.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t,ELITE,1
+17,DeLonghi Rivelia Fully Automatic Coffee  ...,2999.99,2999.99₾,2199.99,2199.99₾,2199.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+18,DeLonghi Rivelia Arctic Coffee Machine O ...,2999.99,2999.99₾,,,2999.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+19,DeLonghi ECAM320.70.TB,2649.99,2649.99₾,,,2649.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+20,DeLonghi PrimaDonna Aromatic ECAM630.75. ...,5099.99,5099.99₾,,,5099.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+21,DeLonghi Dedica EC685.M,799.99,799.99₾,549.99,549.99₾,549.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+22,DeLonghi Dedica EC685.BK,799.99,799.99₾,599.99,599.99₾,599.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+23,DeLonghi PrimaDonna Soul ECAM610.74.MB,4299.99,4299.99₾,,,4299.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+24,DeLonghi Dinamica Plus ECAM380.85.SB,2899.99,2899.99₾,1999.99,1999.99₾,1999.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+25,Delonghi Eletta Explore Silver ECAM450.6 ...,3299.99,3299.99₾,2499.99,2499.99₾,2499.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+26,DeLonghi Dinamica Plus ECAM370.70.B,3359.99,3359.99₾,,,3359.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+27,DeLonghi PrimaDonna Elite ECAM650.75.MS,5499.99,5499.99₾,3699.99,3699.99₾,3699.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+28,DeLonghi Rivelia EXAM440.55.W,2999.99,2999.99₾,2199.99,2199.99₾,2199.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+29,DeLonghi Dedica EC685.R,799.99,799.99₾,549.99,549.99₾,549.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+30,DeLonghi Dedica EC685.W,799.99,799.99₾,549.99,549.99₾,549.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+31,Delonghi PrimaDonna Soul ECAM610.55.SB,4099.99,4099.99₾,2499.99,2499.99₾,2499.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+32,DeLonghi Dedica Maestro Plus EC950.M,1399.99,1399.99₾,999.99,999.99₾,999.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=2,ELITE,2
+33,DeLonghi Rivelia EXAM440.55.G,2999.99,2999.99₾,2099.99,2099.99₾,2099.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+34,DeLonghi Rivelia EXAM440.35.W,2999.99,2999.99₾,1799.99,1799.99₾,1799.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+35,DeLonghi Clessidra Drip Coffee Maker ICM ...,514.99,514.99₾,256.99,256.99₾,256.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+36,DeLonghi Rivelia Jade GreenEXAM441.55.GR,2999.99,2999.99₾,,,2999.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+37,DeLonghi Rivelia Onyx EXAM440.35.B Black,2799.99,2799.99₾,1799.99,1799.99₾,1799.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+38,DeLonghi Magnifica S Smart ECAM250.31.SB,1999.99,1999.99₾,1399.99,1399.99₾,1399.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+39,DeLonghi Magnifica Evo ECAM290.61.SB,2099.99,2099.99₾,1469.99,1469.99₾,1469.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+40,Delonghi La Specialista Arte Evo EC9255. ...,2329.99,2329.99₾,,,2329.99,False,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+41,Delonghi Magnifica S ECAM21.117.SB,1699.99,1699.99₾,1399.99,1399.99₾,1399.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+42,DeLonghi Magnifica S Smart ECAM250.33.TB,1999.99,1999.99₾,1199.99,1199.99₾,1199.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3
+43,DeLonghi Magnifica Evo ECAM290.81.TB,2149.99,2149.99₾,1499.99,1499.99₾,1499.99,True,2025-10-24 14:16:44,https://ee.ge/en/coffee-machine/brand=delonghi;-c201t?page=3,ELITE,3

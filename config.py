@@ -55,6 +55,17 @@ DIMKAVA_CONFIG = {
     "num_scrolls": 5,  # Number of scrolls to trigger lazy loading
 }
 
+# COFFEEHUB Configuration
+COFFEEHUB_CONFIG = {
+    "urls": [
+        "https://coffeehub.ge/shop/?s=Delonghi&post_type=product",  # DeLonghi filter
+        "https://coffeehub.ge/shop/?s=Melitta&post_type=product",  # Melitta filter
+    ],
+    "pages_per_url": 2,  # Pages to scrape for each URL
+    "expected_products": 50,  # Expected total (DeLonghi + Melitta)
+    "pagination_url": "&paged={page_num}",  # URL pattern for pagination
+}
+
 # Selenium Configuration
 SELENIUM_CONFIG = {
     "implicit_wait": 3,  # Reduced for faster scraping
