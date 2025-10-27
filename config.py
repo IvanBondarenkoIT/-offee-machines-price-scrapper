@@ -66,6 +66,29 @@ COFFEEHUB_CONFIG = {
     "pagination_url": "&paged={page_num}",  # URL pattern for pagination
 }
 
+# COFFEEPIN Configuration
+COFFEEPIN_CONFIG = {
+    "urls": [
+        "https://coffeepin.ge/en/collections/vendors?q=DeLonghi",  # DeLonghi filter
+        "https://coffeepin.ge/en/collections/vendors?q=Melitta",  # Melitta filter
+        "https://coffeepin.ge/en/collections/vendors?q=Nivona",   # Nivona filter
+    ],
+    "pages_per_url": 3,  # Pages to scrape for each URL
+    "expected_products": 30,  # Expected total (DeLonghi + Melitta + Nivona)
+    "pagination_url": "&page={page_num}",  # URL pattern for pagination
+}
+
+# VEGA.GE Configuration
+VEGA_GE_CONFIG = {
+    "urls": [
+        "https://vega.ge/en/kitchen-house/coffee-machines",  # Coffee machines general
+        "https://vega.ge/en/kitchen-house/coffee-machines/?ocf=F1S0V35",  # DeLonghi filter
+    ],
+    "pages_per_url": 5,  # Pages to scrape for each URL
+    "expected_products": 50,  # Expected total
+    "pagination_url": "?page={page_num}",  # URL pattern for pagination
+}
+
 # Selenium Configuration
 SELENIUM_CONFIG = {
     "implicit_wait": 3,  # Reduced for faster scraping

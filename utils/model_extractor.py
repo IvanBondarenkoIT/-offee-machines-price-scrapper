@@ -39,6 +39,14 @@ class ModelExtractor:
         r'F\d+-\d+\w+',
         r'E\d+',
         r'F\d+',
+        # Nivona patterns
+        r'NICR\s*\d+',
+        r'NIMC\s*\d+',
+        r'NIML\s*\d+',
+        r'NICC\s*\d+',
+        r'NIRK\s*\d+',
+        r'NIRT\s*\d+',
+        r'CUBE\s*\d+',
     ]
     
     # Words to remove from product names

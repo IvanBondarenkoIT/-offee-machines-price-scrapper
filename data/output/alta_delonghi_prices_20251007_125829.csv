@@ -1,8 +1,0 @@
-﻿index,name,regular_price,regular_price_str,discount_price,discount_price_str,final_price,has_discount,scraped_at,url
-1,DeLonghi Dinamica (ECAM350.55.B),2649.0,2649₾,1859.0,1859₾,1859.0,True,2025-10-07 12:42:31,https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s
-2,DeLonghi Dedica Manual Espresso Coffee Maker (EC685.R),799.0,799₾,559.0,559₾,559.0,True,2025-10-07 12:42:41,https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s
-3,DeLonghi Dedica Manual Espresso Coffee Maker (EC685.BK),799.0,799₾,559.0,559₾,559.0,True,2025-10-07 12:42:50,https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s
-4,DeLonghi Dedica Manual Espresso Coffee Maker (EC685.W),799.0,799₾,559.0,559₾,559.0,True,2025-10-07 12:42:59,https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s
-5,DeLonghi Coffee Machine Glasses (DLSC310),39.0,39₾,39.0,39₾,39.0,True,2025-10-07 12:43:14,https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s
-6,DeLonghi Coffee Machine Glasses (DLSC311),49.0,49₾,49.0,49₾,49.0,True,2025-10-07 12:43:30,https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s
-7,DeLonghi Dedica Manual Espresso Coffee Maker (EC885.BG),,,,,,False,2025-10-07 12:44:57,https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s
