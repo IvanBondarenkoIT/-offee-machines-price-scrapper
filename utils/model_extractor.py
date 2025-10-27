@@ -32,6 +32,13 @@ class ModelExtractor:
         r'ICM\s*\d+',
         # DLSC series (accessories): DLSC002, DLSC310
         r'DLSC\s*\d+',
+        # Melitta patterns
+        r'Aroma\s*Zones\s*\d+X\d+/\d+\s*\w+',
+        r'Aromaboy\s*\d+',
+        r'Aromafresh\s*\w+',
+        r'F\d+-\d+\w+',
+        r'E\d+',
+        r'F\d+',
     ]
     
     # Words to remove from product names

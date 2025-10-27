@@ -77,16 +77,16 @@ if __name__ == "__main__":
     
     if pdf_path:
         print(f"\n[SUCCESS] PDF ready: {pdf_path}")
-        # Open PDF
-        subprocess.run(['start', str(pdf_path)], shell=True)
+        print("PDF file created successfully. You can open it manually if needed.")
     else:
         # Show manual instructions
         manual_instructions()
         
-        # Open Word document
+        # Don't automatically open files to avoid CMD windows
         output_dir = Path(__file__).parent / 'data' / 'output'
         report_files = list(output_dir.glob('executive_report_*.docx'))
         if report_files:
             latest_report = max(report_files, key=lambda x: x.stat().st_mtime)
-            subprocess.run(['start', str(latest_report)], shell=True)
+            print(f"Word document available: {latest_report}")
+            print("You can open it manually if needed.")
 
