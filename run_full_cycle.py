@@ -94,6 +94,21 @@ class FullCycleRunner:
                 'name': 'COFFEEHUB',
                 'path': self.base_dir / 'scrapers' / 'coffeehub' / 'coffeehub_bs4_scraper.py',
                 'expected': 50
+            },
+            {
+                'name': 'COFFEEPIN',
+                'path': self.base_dir / 'scrapers' / 'coffeepin' / 'coffeepin_bs4_scraper.py',
+                'expected': 30
+            },
+            {
+                'name': 'VELI_STORE',
+                'path': self.base_dir / 'scrapers' / 'veli_store' / 'veli_store_bs4_scraper.py',
+                'expected': 40
+            },
+            {
+                'name': 'VEGA_GE',
+                'path': self.base_dir / 'scrapers' / 'vega_ge' / 'vega_ge_bs4_scraper.py',
+                'expected': 50
             }
         ]
         

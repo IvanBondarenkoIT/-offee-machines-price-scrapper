@@ -44,7 +44,7 @@ class PriceComparisonBuilder:
                 continue
             
             row_str = ' '.join([str(v) for v in row_values])
-            if 'delonghi' not in row_str.lower() and 'melitta' not in row_str.lower():
+            if 'delonghi' not in row_str.lower() and 'melitta' not in row_str.lower() and 'nivona' not in row_str.lower():
                 continue
             
             try:
@@ -57,7 +57,7 @@ class PriceComparisonBuilder:
                 elif len(row_values) == 7:
                     name, qty, price = str(row_values[1]), row_values[4], row_values[5]
                 
-                if name and ('delonghi' in name.lower() or 'melitta' in name.lower()):
+                if name and ('delonghi' in name.lower() or 'melitta' in name.lower() or 'nivona' in name.lower()):
                     if isinstance(qty, (int, float)) and isinstance(price, (int, float)):
                         if qty > 0 and price > 0:
                             products.append({
@@ -83,6 +83,9 @@ class PriceComparisonBuilder:
             'ELITE': 'elite_*_prices_*.xlsx',
             'DIM_KAVA': 'dimkava_*_prices_*.xlsx',
             'COFFEEHUB': 'coffeehub_prices_*.xlsx',
+            'COFFEEPIN': 'coffeepin_prices_*.xlsx',
+            'VELI_STORE': 'veli_store_prices_*.xlsx',
+            'VEGA_GE': 'vega_ge_prices_*.xlsx',
         }
         
         result = {}
@@ -241,20 +244,20 @@ class PriceComparisonBuilder:
             }
             
             # Add competitor prices - DIM_KAVA first (our website), then others
-            for source in ['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE', 'COFFEEHUB']:
+            for source in ['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE', 'COFFEEHUB', 'COFFEEPIN', 'VELI_STORE', 'VEGA_GE']:
                 if source in competitor_products:
                     p = competitor_products[source]
                     if p['has_discount'] and p['regular_price'] and p['discount_price']:
-                        row[source] = f"{p['regular_price']:.0f} \\ {p['discount_price']:.0f}"
+                        row[source] = f"{p['regular_price']:.2f} \\ {p['discount_price']:.2f}"
                     else:
                         # Use regular_price if available and valid, otherwise price
                         regular_price = p.get('regular_price')
                         price = p.get('price')
                         
                         if regular_price and not pd.isna(regular_price):
-                            row[source] = f"{regular_price:.0f}"
+                            row[source] = f"{regular_price:.2f}"
                         elif price and not pd.isna(price):
-                            row[source] = f"{price:.0f}"
+                            row[source] = f"{price:.2f}"
                         else:
                             row[source] = '-'
                 else:
