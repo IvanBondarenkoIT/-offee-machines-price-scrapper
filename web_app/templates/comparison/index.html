@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Price Comparison - Coffee Price Monitor{% endblock %}
+
+{% block extra_css %}
+<style>
+    .price-cell {
+        white-space: nowrap;
+    }
+    .price-cheaper {
+        background-color: #d4edda !important;
+        font-weight: bold;
+    }
+    .price-expensive {
+        background-color: #f8d7da !important;
+    }
+    .table-responsive {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .sticky-header th {
+        position: sticky;
+        top: 0;
+        background-color: #fff;
+        z-index: 10;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-bar-chart-line"></i> Price Comparison</h1>
+    {% if upload %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportToExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFilters()">
+                <i class="bi bi-funnel"></i> Filters
+            </button>
+        </div>
+        <span class="badge bg-info fs-6">{{ upload.upload_date.strftime('%Y-%m-%d') }}</span>
+    </div>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+</div>
+{% endif %}
+
+{% if upload %}
+<!-- Statistics Summary -->
+<div class="row mb-3">
+    {% if statistics %}
+    <div class="col-md-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col">
+                        <h4>{{ statistics.total_products }}</h4>
+                        <small class="text-muted">Total Products</small>
+                    </div>
+                    <div class="col">
+                        <h4>{{ "{:,.0f}".format(statistics.total_value) }}</h4>
+                        <small class="text-muted">Total Value (GEL)</small>
+                    </div>
+                    <div class="col">
+                        <h4>{{ statistics.products_with_1_plus_competitors }}</h4>
+                        <small class="text-muted">With Competitors</small>
+                    </div>
+                    <div class="col">
+                        <h4>{{ "{:,.2f}".format(statistics.avg_our_price) }}</h4>
+                        <small class="text-muted">Avg Price (GEL)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Filters (Initially Hidden) -->
+<div id="filtersPanel" class="card mb-3" style="display: none;">
+    <div class="card-body">
+        <form id="filterForm" class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Brand</label>
+                <select class="form-select form-select-sm" name="brand">
+                    <option value="">All Brands</option>
+                    <option value="DeLonghi">DeLonghi</option>
+                    <option value="Melitta">Melitta</option>
+                    <option value="Nivona">Nivona</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Price From</label>
+                <input type="number" class="form-control form-control-sm" name="price_from" placeholder="0">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Price To</label>
+                <input type="number" class="form-control form-control-sm" name="price_to" placeholder="10000">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Competitor</label>
+                <select class="form-select form-select-sm" name="competitor">
+                    <option value="">All</option>
+                    {% for comp in competitors %}
+                    <option value="{{ comp }}">{{ comp }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select form-select-sm" name="status">
+                    <option value="">All</option>
+                    <option value="cheaper">We are Cheaper</option>
+                    <option value="expensive">We are Expensive</option>
+                    <option value="no_competitors">No Competitors</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Search</label>
+                <input type="text" class="form-control form-control-sm" name="search" placeholder="Model or name">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="resetFilters()">Reset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Comparison Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 sticky-header" id="comparisonTable">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 150px;">Model</th>
+                        <th style="width: 250px;">Product Name</th>
+                        <th style="width: 80px;">Brand</th>
+                        <th style="width: 100px;">Our Price</th>
+                        <th style="width: 60px;">Qty</th>
+                        {% for competitor in competitors %}
+                        <th style="width: 120px;">{{ competitor }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in products %}
+                    {% set product = item.product %}
+                    {% set competitor_prices = item.competitor_prices %}
+                    <tr>
+                        <td><strong>{{ product.model }}</strong></td>
+                        <td><small>{{ product.name }}</small></td>
+                        <td><span class="badge bg-secondary">{{ product.brand }}</span></td>
+                        <td class="price-cell"><strong>{{ "{:,.2f}".format(product.our_price) }}</strong></td>
+                        <td>{{ product.quantity }}</td>
+                        {% for competitor in competitors %}
+                        <td class="price-cell
+                            {% if competitor in competitor_prices %}
+                                {% set cp = competitor_prices[competitor] %}
+                                {% if cp.price < product.our_price %}price-cheaper
+                                {% elif cp.price > product.our_price %}price-expensive
+                                {% endif %}
+                            {% endif %}
+                        ">
+                            {% if competitor in competitor_prices %}
+                                {% set cp = competitor_prices[competitor] %}
+                                {% if cp.has_discount and cp.discount_price %}
+                                    <small class="text-muted text-decoration-line-through">{{ "{:,.2f}".format(cp.regular_price) }}</small><br>
+                                    <strong>{{ "{:,.2f}".format(cp.discount_price) }}</strong>
+                                {% else %}
+                                    {{ "{:,.2f}".format(cp.price) }}
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- No Data State -->
+<div class="text-center py-5">
+    <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+    <h3 class="mt-3">No Comparison Data Available</h3>
+    <p class="text-muted">Upload your price comparison file to see the data</p>
+</div>
+{% endif %}
+
+<script>
+function toggleFilters() {
+    const panel = document.getElementById('filtersPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function resetFilters() {
+    document.getElementById('filterForm').reset();
+    window.location.reload();
+}
+
+function exportToExcel() {
+    window.location.href = "{{ url_for('comparison.export', upload_id=upload.id) if upload else '#' }}";
+}
+
+// Filter form submission (AJAX)
+document.getElementById('filterForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    // TODO: Implement AJAX filtering
+    alert('Filter functionality coming soon!');
+});
+</script>
+{% endblock %}
+

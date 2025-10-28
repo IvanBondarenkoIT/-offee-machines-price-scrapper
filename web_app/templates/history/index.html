@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}History - Coffee Price Monitor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-clock-history"></i> Upload History</h1>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+</div>
+{% endif %}
+
+{% if uploads %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Uploaded At</th>
+                        <th>Products</th>
+                        <th>Total Value</th>
+                        <th>Avg Price</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in uploads %}
+                    {% set upload = item.upload %}
+                    {% set stats = item.statistics %}
+                    <tr>
+                        <td>
+                            <strong>{{ upload.upload_date.strftime('%Y-%m-%d') }}</strong>
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                {{ upload.uploaded_at.strftime('%H:%M:%S') if upload.uploaded_at else '-' }}
+                            </small>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ upload.total_products }}</span>
+                        </td>
+                        <td>
+                            {% if stats %}
+                                {{ "{:,.0f}".format(stats.total_value) }} GEL
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if stats %}
+                                {{ "{:,.2f}".format(stats.avg_our_price) }} GEL
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if upload.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                            {% elif upload.status == 'processing' %}
+                                <span class="badge bg-warning">Processing</span>
+                            {% elif upload.status == 'failed' %}
+                                <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('comparison.by_date', date_str=upload.upload_date.strftime('%Y-%m-%d')) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Chart Placeholder -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Price Trends Over Time</h5>
+            </div>
+            <div class="card-body">
+                <div id="trendsChart" class="text-center py-5">
+                    <i class="bi bi-bar-chart text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-3">Select a product to view price trends</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- No Data State -->
+<div class="text-center py-5">
+    <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+    <h3 class="mt-3">No History Available</h3>
+    <p class="text-muted">Upload price comparison files to build your history</p>
+</div>
+{% endif %}
+{% endblock %}
+

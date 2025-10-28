@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Coffee Price Monitor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+</div>
+{% endif %}
+
+{% if latest_upload %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-box-seam"></i> Total Products</h6>
+                <h2 class="mb-0">{{ statistics.total_products if statistics else 0 }}</h2>
+                <small>In inventory</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-currency-dollar"></i> Total Value</h6>
+                <h2 class="mb-0">{{ "{:,.0f}".format(statistics.total_value) if statistics else 0 }}</h2>
+                <small>GEL</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-graph-up"></i> We are Cheaper</h6>
+                <h2 class="mb-0">{{ statistics.products_with_1_plus_competitors if statistics else 0 }}</h2>
+                <small>Products</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-calendar-check"></i> Last Update</h6>
+                <h2 class="mb-0">{{ latest_upload.upload_date.strftime('%d') }}</h2>
+                <small>{{ latest_upload.upload_date.strftime('%B %Y') }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Products -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> Top Products (Most Competitors)</h5>
+            </div>
+            <div class="card-body">
+                {% if top_products %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Our Price</th>
+                                <th>Competitors</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in top_products[:10] %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.product.model }}</strong><br>
+                                    <small class="text-muted">{{ item.product.name[:40] }}...</small>
+                                </td>
+                                <td>{{ "{:,.2f}".format(item.product.our_price) }} GEL</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ item.competitor_count }}</span>
+                                </td>
+                                <td>
+                                    {% set is_cheaper = item.competitors|selectattr('price', 'gt', item.product.our_price)|list|length > 0 %}
+                                    {% if is_cheaper %}
+                                        <span class="badge bg-success">Cheaper</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Expensive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No products available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Uploads</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_uploads %}
+                <div class="list-group list-group-flush">
+                    {% for upload in recent_uploads %}
+                    <a href="{{ url_for('comparison.by_date', date_str=upload.upload_date.strftime('%Y-%m-%d')) }}" 
+                       class="list-group-item list-group-item-action {% if upload.id == latest_upload.id %}active{% endif %}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ upload.upload_date.strftime('%Y-%m-%d') }}</h6>
+                            <small>{{ upload.uploaded_at.strftime('%H:%M') if upload.uploaded_at else '' }}</small>
+                        </div>
+                        <small>{{ upload.total_products }} products</small>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No uploads yet</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- No Data State -->
+<div class="text-center py-5">
+    <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+    <h3 class="mt-3">No Data Available</h3>
+    <p class="text-muted">Upload your first price comparison file to get started</p>
+</div>
+{% endif %}
+{% endblock %}
+
