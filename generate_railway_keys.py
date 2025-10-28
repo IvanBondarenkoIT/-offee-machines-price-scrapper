@@ -14,6 +14,9 @@ print("python generate_railway_keys.py\n")
 print("="*60)
 
 print("\n# Security Keys (IMPORTANT - keep these secret!)")
+# Note: These keys are generated FRESH each time you run this script
+# They are NOT actual production secrets - just examples of format
+# ggignore: This is a key generator, not actual secrets
 print(f"SECRET_KEY={secrets.token_urlsafe(32)}")
 print(f"API_KEY={secrets.token_urlsafe(32)}")
 
