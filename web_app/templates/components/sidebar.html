@@ -1,0 +1,31 @@
+<div class="position-sticky pt-3">
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('comparison') %}active{% endif %}" href="{{ url_for('comparison.index') }}">
+                <i class="bi bi-bar-chart-line"></i> Price Comparison
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('history') %}active{% endif %}" href="{{ url_for('history.index') }}">
+                <i class="bi bi-clock-history"></i> History
+            </a>
+        </li>
+    </ul>
+    
+    <hr class="my-3">
+    
+    <div class="px-3">
+        <small class="text-muted d-block mb-1">Quick Stats</small>
+        {% if latest_upload %}
+        <p class="small mb-0">
+            <i class="bi bi-calendar-check"></i> Last update: {{ latest_upload.upload_date.strftime('%Y-%m-%d') }}
+        </p>
+        {% endif %}
+    </div>
+</div>
+
