@@ -28,16 +28,14 @@ RUN mkdir -p /app/uploads
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=run_web.py
-ENV PORT=5000
 
-# Expose port (uses PORT env var)
-EXPOSE $PORT
+# Expose port 5000 (fixed)
+EXPOSE 5000
 
-# Health check (uses PORT env var)
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/api/health || exit 1
+    CMD curl -f http://localhost:5000/api/health || exit 1
 
-# Run with gunicorn
-# Uses exec form with sh -c for proper signal handling and PORT substitution
-CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 run_web:app"]
+# Run with gunicorn on port 5000
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "run_web:app"]
 
