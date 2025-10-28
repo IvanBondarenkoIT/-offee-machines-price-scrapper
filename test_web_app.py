@@ -1,4 +1,4 @@
-"""
+﻿"""
 Test script for Flask web application
 Tests basic functionality locally before deployment
 """
@@ -15,27 +15,27 @@ def test_imports():
     
     try:
         from web_app.app import create_app
-        print("✓ Flask app import")
+        print("[OK] Flask app import")
         
         from web_app.database import db, init_db
-        print("✓ Database import")
+        print("[OK] Database import")
         
         from web_app.models import User, Upload, Product, CompetitorPrice, Statistic
-        print("✓ Models import")
+        print("[OK] Models import")
         
         from web_app.routes import auth, main, comparison, history, api
-        print("✓ Routes import")
+        print("[OK] Routes import")
         
         from web_app.services import dashboard_service, comparison_service, history_service, upload_service
-        print("✓ Services import")
+        print("[OK] Services import")
         
         from web_app.utils import decorators, formatters
-        print("✓ Utils import")
+        print("[OK] Utils import")
         
-        print("\n✓ All imports successful!")
+        print("\n[OK] All imports successful!")
         return True
     except Exception as e:
-        print(f"\n✗ Import failed: {str(e)}")
+        print(f"\n[FAIL] Import failed: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
