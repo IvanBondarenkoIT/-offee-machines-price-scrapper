@@ -36,5 +36,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/api/health || exit 1
 
 # Run with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "run_web:app"]
+# Use PORT from environment or default to 5000
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 run_web:app
 
