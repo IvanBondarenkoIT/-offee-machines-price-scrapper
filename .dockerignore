@@ -1,3 +1,8 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
 # Python
 __pycache__/
 *.py[cod]
@@ -23,60 +28,58 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
-venv/
-ENV/
-env/
-.venv
+# Data files (don't include in Docker image)
+data/
+*.xlsx
+*.xls
+*.csv
 
-# IDEs
+# Logs
+logs/
+*.log
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*.swn
+*~
+
+# OS
 .DS_Store
+Thumbs.db
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
-.tox/
+*.cover
 
-# Logs
-*.log
-logs/
-*.log.*
+# Project-specific
+scrapers/
+utils/
+config.py
+build_price_comparison.py
+run_full_cycle.py
+generate_executive_report.py
+convert_report_to_pdf.py
+check_*.py
+test_*.py
+debug_*.py
+analyze_*.py
+portable_build/
+output/
+inbox/
 
-# Data directories
-# NOTE: data/output/ IS included for Railway deployment (contains reports)
-# data/output/*  <- COMMENTED OUT to allow reports in Railway
-data/inbox/*.xlsx
-data/inbox/*.xls
-
-# Git
-.git/
-.gitignore
-.gitattributes
-
-# Documentation
+# Documentation (not needed in container)
 *.md
+!README.md
 docs/
 
-# Portable build (not needed for Railway)
-portable_build/
-PriceMonitor_Portable/
-*.zip
-*.exe
-*.spec
+# Uploader (local only)
+web_uploader/
 
-# OS files
-Thumbs.db
-.DS_Store
-*.bak
-*.tmp
-
-# Railway
-.railway/
-railway.json
-
+# Environment
+.env.local
+.env.development
+config.ini
