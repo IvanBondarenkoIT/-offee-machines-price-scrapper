@@ -24,34 +24,39 @@ def init_db(app):
             print(f"Database tables already exist or error creating: {e}")
             pass
         
-        # Create admin user if not exists
+        # Create admin user once (idempotent, safe for multi-worker startup)
         try:
             from web_app.models.user import User
+            from sqlalchemy.exc import IntegrityError
             import os
-            
-            admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-            admin_email = os.environ.get('ADMIN_EMAIL', 'admin@company.com')
-            admin_password = os.environ.get('ADMIN_PASSWORD', 'ChangeThisPassword123!')
-            
-            admin_user = User.query.filter_by(username=admin_username).first()
-            if not admin_user:
-                admin_user = User(
-                    username=admin_username,
-                    email=admin_email,
-                    role='admin'
-                )
-                admin_user.set_password(admin_password)
-                db.session.add(admin_user)
-                db.session.commit()
-                print(f"Admin user '{admin_username}' created successfully")
+
+            admin_username = os.environ.get('ADMIN_USERNAME')
+            admin_email = os.environ.get('ADMIN_EMAIL')
+            admin_password = os.environ.get('ADMIN_PASSWORD')
+
+            if not admin_username or not admin_email or not admin_password:
+                app.logger.warning("ADMIN_* env vars not fully set; skipping auto admin creation")
             else:
-                # Update password if changed
-                admin_user.set_password(admin_password)
-                admin_user.email = admin_email
-                db.session.commit()
-                print(f"Admin user '{admin_username}' updated")
-                
+                existing = User.query.filter(
+                    (User.username == admin_username) | (User.email == admin_email)
+                ).first()
+                if existing:
+                    # Do not overwrite on every start
+                    app.logger.info("Admin user already exists; skipping creation")
+                else:
+                    admin_user = User(
+                        username=admin_username,
+                        email=admin_email,
+                        role='admin'
+                    )
+                    admin_user.set_password(admin_password)
+                    db.session.add(admin_user)
+                    try:
+                        db.session.commit()
+                        app.logger.info(f"Admin user '{admin_username}' created successfully")
+                    except IntegrityError:
+                        db.session.rollback()
+                        app.logger.info("Admin creation raced with another worker; ignoring")
         except Exception as e:
-            print(f"Error creating admin user: {e}")
-            pass
+            app.logger.warning(f"Error during admin auto-creation: {e}")
 
