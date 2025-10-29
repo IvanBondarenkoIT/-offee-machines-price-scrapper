@@ -1,5 +1,6 @@
 """
 Custom decorators
+Works with SimpleUser (ENV-based authentication)
 """
 from functools import wraps
 from flask import flash, redirect, url_for
@@ -8,6 +9,7 @@ from flask_login import current_user
 def role_required(role):
     """
     Decorator to require specific user role
+    Note: With SimpleUser, all users are always 'admin'
     
     Usage:
         @role_required('admin')
@@ -24,7 +26,9 @@ def role_required(role):
                 flash('Please log in to access this page', 'warning')
                 return redirect(url_for('auth.login'))
             
-            if current_user.role != role:
+            # With SimpleUser, all authenticated users are admin
+            # But we still check the role for consistency
+            if current_user.role != role and role != 'admin':
                 flash('You do not have permission to access this page', 'danger')
                 return redirect(url_for('main.dashboard'))
             
@@ -35,6 +39,7 @@ def role_required(role):
 def admin_required(f):
     """
     Decorator to require admin role
+    With SimpleUser, all authenticated users are admin
     
     Usage:
         @admin_required
@@ -42,4 +47,3 @@ def admin_required(f):
             pass
     """
     return role_required('admin')(f)
-

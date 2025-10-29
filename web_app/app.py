@@ -44,10 +44,14 @@ def create_app(config_name='default'):
         return dict(_=translate)
     
     # User loader for Flask-Login
+    # Returns SimpleUser instance (based on ENV variables, no database)
     @login_manager.user_loader
     def load_user(user_id):
-        from web_app.models import User
-        return User.query.get(int(user_id))
+        from web_app.utils.simple_user import SimpleUser
+        # Only accept ID = 1 (single admin user)
+        if user_id == '1':
+            return SimpleUser.get_instance()
+        return None
     
     # Register blueprints
     from web_app.routes.main import bp as main_bp
@@ -64,9 +68,9 @@ def create_app(config_name='default'):
     app.register_blueprint(api_bp)
     app.register_blueprint(i18n_bp)
     
-    # Register users blueprint (admin routes)
-    from web_app.routes.users import bp as users_bp
-    app.register_blueprint(users_bp)
+    # User management routes disabled - using ENV-based auth only
+    # from web_app.routes.users import bp as users_bp
+    # app.register_blueprint(users_bp)
     
     # Error handlers
     @app.errorhandler(404)
