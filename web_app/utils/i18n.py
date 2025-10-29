@@ -326,6 +326,9 @@ def get_translation(key, language=None):
     return TRANSLATIONS.get(language, TRANSLATIONS['en']).get(key, key)
 
 def gettext(key):
-    """Alias for get_translation for Flask-Babel compatibility"""
-    return get_translation(key)
+    """
+    Alias for get_translation for compatibility
+    Automatically gets language from Flask session
+    """
+    return get_translation(key)  # language=None means it will use session
 

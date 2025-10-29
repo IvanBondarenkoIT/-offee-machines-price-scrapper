@@ -31,5 +31,4 @@ requests==2.31.0
 reportlab==4.0.7
 
 # Internationalization
-Flask-Babel==4.0.0
-Babel==2.13.1
+# Using custom translation system (web_app/utils/i18n.py)

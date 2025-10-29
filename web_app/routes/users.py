@@ -6,8 +6,8 @@ from flask_login import login_required, current_user
 from web_app.models import User
 from web_app.database import db
 from web_app.utils.decorators import admin_required
+from web_app.utils.i18n import gettext as _
 from datetime import datetime
-from flask_babel import gettext as _
 
 bp = Blueprint('users', __name__, url_prefix='/users')
 
