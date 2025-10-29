@@ -1,17 +1,16 @@
 """
 Authentication routes
+Uses ENV variables for authentication (no database required)
 """
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from datetime import datetime
-from web_app.models import User
-from web_app.database import db
+from web_app.utils.simple_user import SimpleUser
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Login page"""
+    """Login page - authenticates against ENV variables"""
     # Redirect if already logged in
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
@@ -25,14 +24,10 @@ def login():
             flash('Please provide both username and password', 'danger')
             return render_template('auth/login.html')
         
-        user = User.query.filter_by(username=username).first()
-        
-        if user and user.check_password(password):
-            # Update last login
-            user.last_login = datetime.utcnow()
-            db.session.commit()
-            
-            # Login user
+        # Verify credentials against ENV variables
+        if SimpleUser.verify_login(username, password):
+            # Create and login user (always admin role)
+            user = SimpleUser.get_instance()
             login_user(user, remember=remember)
             flash(f'Welcome back, {user.username}!', 'success')
             
@@ -54,4 +49,3 @@ def logout():
     logout_user()
     flash(f'Goodbye, {username}!', 'info')
     return redirect(url_for('auth.login'))
-
