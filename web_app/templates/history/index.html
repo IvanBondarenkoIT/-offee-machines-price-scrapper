@@ -47,14 +47,14 @@
                         </td>
                         <td>
                             {% if stats %}
-                                {{ "{:,.0f}".format(stats.total_value) }} GEL
+                                {{ "{:,.0f}".format(stats.total_value|default(0)) }} GEL
                             {% else %}
                                 -
                             {% endif %}
                         </td>
                         <td>
                             {% if stats %}
-                                {{ "{:,.2f}".format(stats.avg_our_price) }} GEL
+                                {{ "{:,.2f}".format(stats.avg_our_price|default(0)) }} GEL
                             {% else %}
                                 -
                             {% endif %}
