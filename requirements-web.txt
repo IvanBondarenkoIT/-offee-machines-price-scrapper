@@ -31,5 +31,6 @@ requests==2.31.0
 reportlab==4.0.7
 
 # Internationalization
-Flask-Babel==4.0.0
-Babel==2.13.1
+# Flask-Babel removed - using custom translation system
+# Flask-Babel==4.0.0
+# Babel==2.13.1
