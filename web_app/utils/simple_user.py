@@ -17,8 +17,7 @@ class SimpleUser(UserMixin):
         self.username = os.environ.get('ADMIN_USERNAME', 'admin')
         self.email = os.environ.get('ADMIN_EMAIL', 'admin@company.com')
         self.role = 'admin'  # Always admin role
-        self.is_active = True
-        self.is_authenticated = True
+        # Note: is_active and is_authenticated are properties from UserMixin (default True)
     
     def __repr__(self):
         return f'<SimpleUser {self.username}>'
