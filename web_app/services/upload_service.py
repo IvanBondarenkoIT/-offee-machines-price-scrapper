@@ -177,8 +177,7 @@ def _parse_comparison_sheet(df, upload_id):
                 name=name,
                 quantity=quantity,
                 our_price=our_price,
-                brand=brand,
-                source='INVENTORY'
+                brand=brand
             )
             
             db.session.add(product)
