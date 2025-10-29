@@ -83,7 +83,7 @@
                                     <strong>{{ item.product.model }}</strong><br>
                                     <small class="text-muted">{{ item.product.name[:40] }}...</small>
                                 </td>
-                                <td>{{ "{:,.2f}".format(item.product.our_price) }} GEL</td>
+                                <td>{{ "{:,.2f}".format(item.product.our_price|default(0)) }} GEL</td>
                                 <td>
                                     <span class="badge bg-primary">{{ item.competitor_count }}</span>
                                 </td>
