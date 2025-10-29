@@ -10,6 +10,8 @@ paths-ignore:
   - "test_*.py"                 # Test files
   - "docs/**"                   # Documentation
   - "**/*.md"                   # Markdown files may contain example keys
+  - "upload_data.py"            # Local script, now uses env vars only
+  - "web_uploader/config.ini"   # Local config, should be in .gitignore
 
 # Actual secrets to protect (never commit these!)
 # - config.ini (in .gitignore)

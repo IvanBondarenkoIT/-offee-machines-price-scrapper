@@ -1,13 +1,17 @@
 """
 Flask application factory
 """
-from flask import Flask
+from flask import Flask, request, session
 from flask_login import LoginManager
+from flask_babel import Babel, get_locale
 from web_app.config import config
 from web_app.database import db, init_db
 
 # Initialize Flask-Login
 login_manager = LoginManager()
+
+# Initialize Flask-Babel
+babel = Babel()
 
 def create_app(config_name='default'):
     """
@@ -31,6 +35,32 @@ def create_app(config_name='default'):
     login_manager.login_message = 'Please log in to access this page.'
     login_manager.login_message_category = 'info'
     
+    # Initialize Babel
+    babel.init_app(app)
+    
+    # Language selector
+    @babel.localeselector
+    def get_locale():
+        # Check session first (user preference)
+        if 'language' in session:
+            lang = session['language']
+            if lang in app.config['LANGUAGES']:
+                return lang
+        # Fallback to browser language
+        return request.accept_languages.best_match(app.config['LANGUAGES'].keys()) or 'en'
+    
+    # Inject translation function into templates
+    @app.context_processor
+    def inject_translations():
+        from web_app.utils.i18n import get_translation
+        from flask import session
+        
+        def translate(key):
+            lang = session.get('language', 'en')
+            return get_translation(key, lang)
+        
+        return dict(_=translate)
+    
     # User loader for Flask-Login
     @login_manager.user_loader
     def load_user(user_id):
@@ -43,12 +73,18 @@ def create_app(config_name='default'):
     from web_app.routes.comparison import bp as comparison_bp
     from web_app.routes.history import bp as history_bp
     from web_app.routes.api import bp as api_bp
+    from web_app.routes.i18n import bp as i18n_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(comparison_bp)
     app.register_blueprint(history_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(i18n_bp)
+    
+    # Register users blueprint (admin routes)
+    from web_app.routes.users import bp as users_bp
+    app.register_blueprint(users_bp)
     
     # Error handlers
     @app.errorhandler(404)
