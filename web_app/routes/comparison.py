@@ -1,14 +1,16 @@
 """
 Price comparison routes
 """
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, send_file
 from flask_login import login_required
+from web_app.models import Upload
 from web_app.services.comparison_service import (
     get_latest_comparison,
     get_comparison_by_date,
     filter_products,
     export_to_excel
 )
+from web_app.services.report_service import generate_pdf_report
 
 bp = Blueprint('comparison', __name__, url_prefix='/comparison')
 
@@ -93,14 +95,41 @@ def filter():
 @bp.route('/export/<int:upload_id>')
 @login_required
 def export(upload_id):
-    """Export comparison to Excel"""
+    """Export comparison to Excel and download"""
     try:
-        file_path = export_to_excel(upload_id)
+        excel_file = export_to_excel(upload_id)
+        upload = Upload.query.get(upload_id)
+        date_str = upload.upload_date.strftime('%Y%m%d') if upload else 'export'
+        filename = f'price_comparison_{date_str}.xlsx'
+        
+        return send_file(
+            excel_file,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
         return jsonify({
-            'success': True,
-            'message': 'Export completed',
-            'file': file_path
-        })
+            'success': False,
+            'error': str(e)
+        }), 400
+
+@bp.route('/report/<int:upload_id>')
+@login_required
+def report(upload_id):
+    """Generate PDF report with recommendations"""
+    try:
+        pdf_file = generate_pdf_report(upload_id)
+        upload = Upload.query.get(upload_id)
+        date_str = upload.upload_date.strftime('%Y%m%d') if upload else 'report'
+        filename = f'executive_report_{date_str}.pdf'
+        
+        return send_file(
+            pdf_file,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
     except Exception as e:
         return jsonify({
             'success': False,

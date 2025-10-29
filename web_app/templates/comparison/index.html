@@ -34,7 +34,10 @@
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportToExcel()">
-                <i class="bi bi-file-earmark-excel"></i> Export
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportToPDF()">
+                <i class="bi bi-file-earmark-pdf"></i> PDF Report
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFilters()">
                 <i class="bi bi-funnel"></i> Filters
@@ -211,6 +214,10 @@ function resetFilters() {
 
 function exportToExcel() {
     window.location.href = "{{ url_for('comparison.export', upload_id=upload.id) if upload else '#' }}";
+}
+
+function exportToPDF() {
+    window.location.href = "{{ url_for('comparison.report', upload_id=upload.id) if upload else '#' }}";
 }
 
 // Filter form submission (AJAX)

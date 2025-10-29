@@ -1,6 +1,9 @@
 """
 Comparison service - price comparison data
 """
+import pandas as pd
+from pathlib import Path
+from io import BytesIO
 from web_app.models import Upload, Product, CompetitorPrice, Statistic
 from web_app.database import db
 from datetime import datetime
@@ -195,22 +198,108 @@ def filter_products(upload_id, filters):
 
 def export_to_excel(upload_id):
     """
-    Export comparison to Excel file
+    Export comparison to Excel file with full structure (same as local version)
     
     Args:
         upload_id: Upload ID
     
     Returns:
-        str: path to exported file
+        BytesIO: Excel file as BytesIO object
     """
-    # This is a placeholder - actual implementation would generate Excel file
-    # For now, we'll just return the original file path if available
     upload = Upload.query.get(upload_id)
     
     if not upload:
         raise Exception(f"Upload not found: {upload_id}")
     
-    # TODO: Generate Excel file from database data
-    # For now, return the original file name
-    return upload.file_name
+    # Get all products and data for this upload
+    products = Product.query.filter_by(upload_id=upload_id).order_by(Product.model).all()
+    statistics = Statistic.query.filter_by(upload_id=upload_id).first()
+    
+    # Get all unique competitors
+    competitors = (
+        db.session.query(CompetitorPrice.competitor)
+        .join(Product, CompetitorPrice.product_id == Product.id)
+        .filter(Product.upload_id == upload_id)
+        .distinct()
+        .order_by(CompetitorPrice.competitor)
+        .all()
+    )
+    competitor_names = [c[0] for c in competitors]
+    
+    # Build main comparison table
+    comparison_rows = []
+    for product in products:
+        row = {
+            'Quantity': product.quantity or 0,
+            'Model': product.model or '-',
+            'Product Name': product.name or '-',
+            'Our Price': float(product.our_price) if product.our_price else 0.0,
+        }
+        
+        # Add competitor prices
+        competitor_prices = CompetitorPrice.query.filter_by(product_id=product.id).all()
+        prices_by_competitor = {cp.competitor: cp for cp in competitor_prices}
+        
+        for comp_name in competitor_names:
+            if comp_name in prices_by_competitor:
+                cp = prices_by_competitor[comp_name]
+                if cp.has_discount and cp.regular_price and cp.discount_price:
+                    row[comp_name] = f"{float(cp.regular_price):.2f} \\ {float(cp.discount_price):.2f}"
+                elif cp.price:
+                    row[comp_name] = f"{float(cp.price):.2f}"
+                else:
+                    row[comp_name] = '-'
+            else:
+                row[comp_name] = '-'
+        
+        comparison_rows.append(row)
+    
+    # Create DataFrame for main comparison
+    comparison_df = pd.DataFrame(comparison_rows)
+    
+    # Create Excel in memory
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Main comparison sheet
+        comparison_df.to_excel(writer, sheet_name='Price Comparison', index=False)
+        
+        # Statistics sheet
+        if statistics:
+            stats_data = {
+                'Total Products': [statistics.total_products or 0],
+                'Total Value': [float(statistics.total_value) if statistics.total_value else 0.0],
+                'Avg Price': [float(statistics.avg_our_price) if statistics.avg_our_price else 0.0],
+                'Products Cheaper': [statistics.products_cheaper or 0],
+                'Products Expensive': [statistics.products_expensive or 0],
+                'Products No Competitors': [statistics.products_no_competitors or 0],
+            }
+            stats_df = pd.DataFrame(stats_data)
+            stats_df.to_excel(writer, sheet_name='Statistics', index=False)
+        
+        # Individual competitor sheets
+        for comp_name in competitor_names:
+            comp_products = []
+            for product in products:
+                cp = CompetitorPrice.query.filter_by(
+                    product_id=product.id,
+                    competitor=comp_name
+                ).first()
+                
+                if cp:
+                    comp_row = {
+                        'Product Name': product.name or '-',
+                        'Price': float(cp.price) if cp.price else None,
+                        'Regular Price': float(cp.regular_price) if cp.regular_price else None,
+                        'Discount Price': float(cp.discount_price) if cp.discount_price else None,
+                        'Has Discount': cp.has_discount,
+                        'URL': cp.url or '-'
+                    }
+                    comp_products.append(comp_row)
+            
+            if comp_products:
+                comp_df = pd.DataFrame(comp_products)
+                comp_df.to_excel(writer, sheet_name=comp_name, index=False)
+    
+    output.seek(0)
+    return output
 
