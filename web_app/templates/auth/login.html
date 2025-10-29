@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Login - Coffee Price Monitor{% endblock %}
+{% block title %}{{ _('Login') }} - Coffee Price Monitor{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -11,44 +11,44 @@
                     <div class="text-center mb-4">
                         <i class="bi bi-cup-hot-fill text-primary" style="font-size: 3rem;"></i>
                         <h3 class="mt-3">Coffee Price Monitor</h3>
-                        <p class="text-muted">Login to access the dashboard</p>
+                        <p class="text-muted">{{ _('Login to access the dashboard') }}</p>
                     </div>
                     
                     <form method="POST" action="{{ url_for('auth.login') }}">
                         <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
+                            <label for="username" class="form-label">{{ _('Username') }}</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-person"></i></span>
                                 <input type="text" 
                                        class="form-control" 
                                        id="username" 
                                        name="username" 
-                                       placeholder="Enter username" 
+                                       placeholder="{{ _('Enter username') }}" 
                                        required 
                                        autofocus>
                             </div>
                         </div>
                         
                         <div class="mb-3">
-                            <label for="password" class="form-label">Password</label>
+                            <label for="password" class="form-label">{{ _('Password') }}</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-lock"></i></span>
                                 <input type="password" 
                                        class="form-control" 
                                        id="password" 
                                        name="password" 
-                                       placeholder="Enter password" 
+                                       placeholder="{{ _('Enter password') }}" 
                                        required>
                             </div>
                         </div>
                         
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                            <label class="form-check-label" for="remember">Remember me</label>
+                            <label class="form-check-label" for="remember">{{ _('Remember me') }}</label>
                         </div>
                         
                         <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-box-arrow-in-right"></i> Login
+                            <i class="bi bi-box-arrow-in-right"></i> {{ _('Login') }}
                         </button>
                     </form>
                 </div>

@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Coffee Price Monitor{% endblock %}
+{% block title %}{{ _('Dashboard') }} - Coffee Price Monitor{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+    <h1 class="h2"><i class="bi bi-speedometer2"></i> {{ _('Dashboard') }}</h1>
     {% if latest_upload %}
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
             <a href="{{ url_for('comparison.export', upload_id=latest_upload.id) }}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-file-earmark-excel"></i> Export Excel
+                <i class="bi bi-file-earmark-excel"></i> {{ _('Export Excel') }}
             </a>
             <a href="{{ url_for('comparison.report', upload_id=latest_upload.id) }}" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-file-earmark-pdf"></i> PDF Report
+                <i class="bi bi-file-earmark-pdf"></i> {{ _('PDF Report') }}
             </a>
         </div>
     </div>
@@ -31,9 +31,9 @@
     <div class="col-md-3">
         <div class="card text-white bg-primary">
             <div class="card-body">
-                <h6 class="card-title"><i class="bi bi-box-seam"></i> Total Products</h6>
+                <h6 class="card-title"><i class="bi bi-box-seam"></i> {{ _('Total Products') }}</h6>
                 <h2 class="mb-0">{{ statistics.total_products if statistics else 0 }}</h2>
-                <small>In inventory</small>
+                <small>{{ _('In inventory') }}</small>
             </div>
         </div>
     </div>
@@ -41,9 +41,9 @@
     <div class="col-md-3">
         <div class="card text-white bg-success">
             <div class="card-body">
-                <h6 class="card-title"><i class="bi bi-currency-dollar"></i> Total Value</h6>
+                <h6 class="card-title"><i class="bi bi-currency-dollar"></i> {{ _('Total Value') }}</h6>
                 <h2 class="mb-0">{{ "{:,.0f}".format(statistics.total_value) if statistics else 0 }}</h2>
-                <small>GEL</small>
+                <small>{{ _('GEL') }}</small>
             </div>
         </div>
     </div>
@@ -51,9 +51,9 @@
     <div class="col-md-3">
         <div class="card text-white bg-info">
             <div class="card-body">
-                <h6 class="card-title"><i class="bi bi-graph-up"></i> We are Cheaper</h6>
+                <h6 class="card-title"><i class="bi bi-graph-up"></i> {{ _('We are Cheaper') }}</h6>
                 <h2 class="mb-0">{{ statistics.products_with_1_plus_competitors if statistics else 0 }}</h2>
-                <small>Products</small>
+                <small>{{ _('Products') }}</small>
             </div>
         </div>
     </div>
@@ -61,7 +61,7 @@
     <div class="col-md-3">
         <div class="card text-white bg-warning">
             <div class="card-body">
-                <h6 class="card-title"><i class="bi bi-calendar-check"></i> Last Update</h6>
+                <h6 class="card-title"><i class="bi bi-calendar-check"></i> {{ _('Last Update') }}</h6>
                 <h2 class="mb-0">{{ latest_upload.upload_date.strftime('%d') }}</h2>
                 <small>{{ latest_upload.upload_date.strftime('%B %Y') }}</small>
             </div>
@@ -74,7 +74,7 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-trophy"></i> Top Products (Most Competitors)</h5>
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> {{ _('Top Products (Most Competitors)') }}</h5>
             </div>
             <div class="card-body">
                 {% if top_products %}
@@ -82,10 +82,10 @@
                     <table class="table table-sm">
                         <thead>
                             <tr>
-                                <th>Model</th>
-                                <th>Our Price</th>
-                                <th>Competitors</th>
-                                <th>Status</th>
+                                <th>{{ _('Model') }}</th>
+                                <th>{{ _('Our Price') }}</th>
+                                <th>{{ _('Competitors') }}</th>
+                                <th>{{ _('Status') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -102,9 +102,9 @@
                                 <td>
                                     {% set is_cheaper = item.competitors|selectattr('price', 'gt', item.product.our_price)|list|length > 0 %}
                                     {% if is_cheaper %}
-                                        <span class="badge bg-success">Cheaper</span>
+                                        <span class="badge bg-success">{{ _('Cheaper') }}</span>
                                     {% else %}
-                                        <span class="badge bg-warning">Expensive</span>
+                                        <span class="badge bg-warning">{{ _('Expensive') }}</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -113,7 +113,7 @@
                     </table>
                 </div>
                 {% else %}
-                <p class="text-muted mb-0">No products available</p>
+                <p class="text-muted mb-0">{{ _('No products available') }}</p>
                 {% endif %}
             </div>
         </div>
@@ -122,7 +122,7 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Uploads</h5>
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> {{ _('Recent Uploads') }}</h5>
             </div>
             <div class="card-body">
                 {% if recent_uploads %}
@@ -134,12 +134,12 @@
                             <h6 class="mb-1">{{ upload.upload_date.strftime('%Y-%m-%d') }}</h6>
                             <small>{{ upload.uploaded_at.strftime('%H:%M') if upload.uploaded_at else '' }}</small>
                         </div>
-                        <small>{{ upload.total_products }} products</small>
+                        <small>{{ upload.total_products }} {{ _('products') }}</small>
                     </a>
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-muted mb-0">No uploads yet</p>
+                <p class="text-muted mb-0">{{ _('No uploads yet') }}</p>
                 {% endif %}
             </div>
         </div>
@@ -149,8 +149,8 @@
 <!-- No Data State -->
 <div class="text-center py-5">
     <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
-    <h3 class="mt-3">No Data Available</h3>
-    <p class="text-muted">Upload your first price comparison file to get started</p>
+                    <h3 class="mt-3">{{ _('No Data Available') }}</h3>
+                    <p class="text-muted">{{ _('Upload your first price comparison file to get started') }}</p>
 </div>
 {% endif %}
 {% endblock %}

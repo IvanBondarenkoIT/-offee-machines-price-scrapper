@@ -70,6 +70,18 @@ TRANSLATIONS = {
         'Filters': 'Filters',
         'No Comparison Data Available': 'No Comparison Data Available',
         'Upload your price comparison file to see the data': 'Upload your price comparison file to see the data',
+        'Brand': 'Brand',
+        'All Brands': 'All Brands',
+        'Product Name': 'Product Name',
+        'Qty': 'Qty',
+        'With Competitors': 'With Competitors',
+        'Avg Price': 'Avg Price',
+        'Expensive': 'Expensive',
+        'No products available': 'No products available',
+        'No uploads yet': 'No uploads yet',
+        'No Data Available': 'No Data Available',
+        'Upload your first price comparison file to get started': 'Upload your first price comparison file to get started',
+        'Model or name': 'Model or name',
         
         # History
         'Upload History': 'Upload History',
