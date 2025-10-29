@@ -284,7 +284,6 @@ TRANSLATIONS = {
         'No uploads yet': 'ატვირთვები ჯერ არ არის',
         'No Data Available': 'მონაცემები არ არის ხელმისაწვდომი',
         'Upload your first price comparison file to get started': 'დაიწყეთ თქვენი პირველი ფასების შედარების ფაილის ატვირთვით',
- 혼란
         
         # History
         'Upload History': 'ატვირთვების ისტორია',
