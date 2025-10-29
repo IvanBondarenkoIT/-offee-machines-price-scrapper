@@ -100,13 +100,23 @@ def _process_excel_data(excel_data, upload_id):
     Returns:
         dict: processing result
     """
-    # Get main comparison sheet (usually first sheet or named "Price Comparison")
+    # Choose the correct comparison sheet
+    # Prefer explicit names, otherwise pick the first sheet that has the required columns
+    preferred_names = {'Price Comparison', 'Comparison', 'COMPARISON', 'Price_Comparison'}
     main_sheet = None
-    
-    if 'Price Comparison' in excel_data:
-        main_sheet = excel_data['Price Comparison']
-    else:
-        # Use first sheet
+    for name, df in excel_data.items():
+        if name in preferred_names:
+            main_sheet = df
+            break
+    if main_sheet is None:
+        # Find a sheet that contains at least Model and Our Price columns
+        for df in excel_data.values():
+            cols = {str(c).strip() for c in df.columns}
+            if {'Model', 'Our Price'}.issubset(cols):
+                main_sheet = df
+                break
+    if main_sheet is None:
+        # Fallback to the first sheet
         main_sheet = list(excel_data.values())[0]
     
     # Process main comparison data
@@ -305,19 +315,14 @@ def _calculate_statistics(products_data, upload_id):
         if is_expensive:
             products_expensive += 1
     
-    # Create statistic record
+    # Persist statistics using fields that exist in the Statistic model
     statistic = Statistic(
         upload_id=upload_id,
-        total_products=total_products,
-        total_quantity=sum(p['product'].quantity for p in products_data),
         total_value=total_value,
-        avg_our_price=avg_price,
-        min_our_price=min_price,
-        max_our_price=max_price,
-        avg_competitors_per_product=sum(p['competitor_count'] for p in products_data) / total_products,
-        products_with_1_plus_competitors=products_with_1_plus,
-        products_with_2_plus_competitors=products_with_2_plus,
-        products_with_3_plus_competitors=products_with_3_plus
+        avg_price=avg_price,
+        products_cheaper=products_cheaper,
+        products_expensive=products_expensive,
+        products_no_competitors=products_no_competitors
     )
     
     db.session.add(statistic)
@@ -325,8 +330,8 @@ def _calculate_statistics(products_data, upload_id):
     
     return {
         'total_products': total_products,
-        'total_value': float(total_value),
-        'avg_price': float(avg_price),
+        'total_value': float(total_value) if total_products else 0.0,
+        'avg_price': float(avg_price) if total_products else 0.0,
         'products_cheaper': products_cheaper,
         'products_expensive': products_expensive,
         'products_no_competitors': products_no_competitors
