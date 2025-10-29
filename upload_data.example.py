@@ -1,14 +1,30 @@
 #!/usr/bin/env python3
 """
 Simple file uploader for Coffee Price Monitor
+Reads API credentials from environment variables
+
+Usage:
+1. Copy this file to upload_data.py
+2. Create .env file with:
+   API_KEY=your_api_key_here
+   API_UPLOAD_URL=https://your-app.up.railway.app/api/upload
+3. Run: python upload_data.py
 """
 import requests
 import os
 from pathlib import Path
 
 def upload_file():
-    api_url = "https://cooperative-stillness-production.up.railway.app/api/upload"
-    api_key = "x4RVIwxMQq3Z9DC-o62GRYC0sfBB5IwnaoatMi7wUKw"
+    # Read from environment variables (set in .env file)
+    api_url = os.environ.get('API_UPLOAD_URL', 'https://your-app.up.railway.app/api/upload')
+    api_key = os.environ.get('API_KEY')
+    
+    if not api_key:
+        print("[ERROR] API_KEY environment variable is required!")
+        print("Create .env file with:")
+        print("  API_KEY=your_api_key_here")
+        print("  API_UPLOAD_URL=https://your-app.up.railway.app/api/upload")
+        return False
     
     # Find latest price comparison file
     data_dir = Path("data/output")
@@ -43,3 +59,4 @@ def upload_file():
 
 if __name__ == "__main__":
     upload_file()
+

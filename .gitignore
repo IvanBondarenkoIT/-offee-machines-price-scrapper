@@ -85,3 +85,11 @@ railway-runtime.txt
 # Metadata files (generated at runtime)
 data/inbox/inventory_metadata.json
 
+# Output directory
+/data/output/
+
+# Local config files with secrets
+web_uploader/config.ini
+upload_data.py
+.env.local
+*.local.ini
