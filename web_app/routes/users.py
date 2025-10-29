@@ -7,7 +7,13 @@ from web_app.models import User
 from web_app.database import db
 from web_app.utils.decorators import admin_required
 from datetime import datetime
-from flask_babel import gettext as _
+from flask import session
+
+def _(key):
+    """Translation helper that automatically gets language from session"""
+    from web_app.utils.i18n import get_translation
+    lang = session.get('language', 'en')
+    return get_translation(key, lang)
 
 bp = Blueprint('users', __name__, url_prefix='/users')
 
