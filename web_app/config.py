@@ -37,6 +37,15 @@ class Config:
     
     # API
     API_TOKEN = os.environ.get('API_TOKEN') or 'dev-api-token-change-in-production'
+    
+    # Internationalization
+    LANGUAGES = {
+        'en': 'English',
+        'ru': 'Русский',
+        'ka': 'ქართული'
+    }
+    BABEL_DEFAULT_LOCALE = 'en'
+    BABEL_DEFAULT_TIMEZONE = 'UTC'
 
 
 class DevelopmentConfig(Config):

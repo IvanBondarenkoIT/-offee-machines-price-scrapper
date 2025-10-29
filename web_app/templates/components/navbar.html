@@ -11,6 +11,19 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             {% if current_user.is_authenticated %}
             <ul class="navbar-nav ms-auto">
+                <!-- Language Switcher -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="langDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-translate"></i> {{ session.get('language', 'en')|upper }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('i18n.set_language', lang='en', next=request.url) }}">🇬🇧 English</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('i18n.set_language', lang='ru', next=request.url) }}">🇷🇺 Русский</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('i18n.set_language', lang='ka', next=request.url) }}">🇬🇪 ქართული</a></li>
+                    </ul>
+                </li>
+                
+                <!-- User Menu -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle"></i> {{ current_user.username }}
