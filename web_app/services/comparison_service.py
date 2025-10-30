@@ -149,6 +149,21 @@ def filter_products(upload_id, filters):
         
         for product in products:
             competitor_prices = CompetitorPrice.query.filter_by(product_id=product.id).all()
+            # Determine baseline: use Dim Kava price if present, else product.our_price
+            def is_dimkava(name: str) -> bool:
+                n = (name or '').strip().lower().replace(' ', '_')
+                return n in {'dim_kava', 'dimkava'}
+            dim_cp = next((cp for cp in competitor_prices if is_dimkava(cp.competitor)), None)
+            baseline_price = None
+            if dim_cp:
+                if dim_cp.has_discount and dim_cp.discount_price:
+                    baseline_price = float(dim_cp.discount_price)
+                elif dim_cp.regular_price:
+                    baseline_price = float(dim_cp.regular_price)
+                elif dim_cp.price:
+                    baseline_price = float(dim_cp.price)
+            if baseline_price is None:
+                baseline_price = float(product.our_price) if product.our_price is not None else None
             
             # No competitors filter
             if filters.get('no_competitors') and len(competitor_prices) > 0:
@@ -165,9 +180,18 @@ def filter_products(upload_id, filters):
                 if len(competitor_prices) == 0:
                     continue
                 
-                # Check if we are cheaper or more expensive
-                is_cheaper = any(product.our_price < cp.price for cp in competitor_prices)
-                is_more_expensive = any(product.our_price > cp.price for cp in competitor_prices)
+                # Check if we are cheaper or more expensive vs competitors using baseline
+                def cp_price_val(cp):
+                    if cp.has_discount and cp.discount_price:
+                        return float(cp.discount_price)
+                    if cp.regular_price:
+                        return float(cp.regular_price)
+                    return float(cp.price) if cp.price else None
+                comp_values = [cp_price_val(cp) for cp in competitor_prices if cp_price_val(cp) is not None]
+                if baseline_price is None or not comp_values:
+                    continue
+                is_cheaper = any(baseline_price < v for v in comp_values)
+                is_more_expensive = any(baseline_price > v for v in comp_values)
                 
                 if filters.get('cheaper') and not is_cheaper:
                     continue
