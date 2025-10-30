@@ -235,22 +235,13 @@ class PriceComparisonBuilder:
             if not competitor_products:
                 continue
             
-            # Determine our site (retail) price from DIM_KAVA if available
-            our_site_price = None
-            if 'DIM_KAVA' in competitor_products:
-                p_site = competitor_products['DIM_KAVA']
-                our_site_price = (
-                    p_site.get('discount_price') if p_site.get('has_discount') and p_site.get('discount_price')
-                    else p_site.get('regular_price') or p_site.get('price')
-                )
-
-            # Build row - include Our Cost (inventory) and Our Price (retail)
+            # Build row - keep Our Price as inventory input cost (per requirement)
             row = {
                 'Quantity': inventory_product['quantity'],
                 'Model': inventory_product['model'],  # Original model for display
                 'Product Name': inventory_product['name'],
                 'Our Cost': inventory_product['price'],
-                'Our Price': our_site_price if our_site_price else inventory_product['price'],
+                'Our Price': inventory_product['price'],
             }
             
             # Add competitor prices - DIM_KAVA first (our website), then others
