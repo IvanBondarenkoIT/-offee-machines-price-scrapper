@@ -235,12 +235,22 @@ class PriceComparisonBuilder:
             if not competitor_products:
                 continue
             
-            # Build row - use ORIGINAL model for display
+            # Determine our site (retail) price from DIM_KAVA if available
+            our_site_price = None
+            if 'DIM_KAVA' in competitor_products:
+                p_site = competitor_products['DIM_KAVA']
+                our_site_price = (
+                    p_site.get('discount_price') if p_site.get('has_discount') and p_site.get('discount_price')
+                    else p_site.get('regular_price') or p_site.get('price')
+                )
+
+            # Build row - include Our Cost (inventory) and Our Price (retail)
             row = {
                 'Quantity': inventory_product['quantity'],
                 'Model': inventory_product['model'],  # Original model for display
                 'Product Name': inventory_product['name'],
-                'Our Price': inventory_product['price'],
+                'Our Cost': inventory_product['price'],
+                'Our Price': our_site_price if our_site_price else inventory_product['price'],
             }
             
             # Add competitor prices - DIM_KAVA first (our website), then others
@@ -266,9 +276,19 @@ class PriceComparisonBuilder:
             rows.append(row)
         
         df = pd.DataFrame(rows)
-        
-        # Sort by model
-        df = df.sort_values('Model')
+
+        # If no rows matched (e.g., no competitors found), return empty-safe dataframe
+        if df.empty:
+            print("[WARNING] No matched products to compare (empty comparison table)")
+            # Return an empty dataframe with expected columns so downstream steps succeed
+            return pd.DataFrame(columns=[
+                'Quantity', 'Model', 'Product Name', 'Our Price',
+                'DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE', 'COFFEEHUB', 'COFFEEPIN', 'VELI_STORE', 'VEGA_GE'
+            ])
+
+        # Sort by model if column exists
+        if 'Model' in df.columns:
+            df = df.sort_values('Model')
         
         print(f"[OK] Created comparison table with {len(df)} products")
         
@@ -332,13 +352,21 @@ class PriceComparisonBuilder:
         """Calculate comparison statistics"""
         print("\n[6/6] Calculating STATISTICS...")
         
+        # Use Our Price (retail) for totals, and include cost metrics
         stats = {
             'Total Products': len(df),
             'Total Quantity': df['Quantity'].sum(),
-            'Total Value': (df['Quantity'] * df['Our Price']).sum(),
-            'Avg Our Price': df['Our Price'].mean(),
-            'Min Our Price': df['Our Price'].min(),
-            'Max Our Price': df['Our Price'].max(),
+            'Total Retail Value': (df['Quantity'] * df['Our Price']).sum() if 'Our Price' in df.columns else 0,
+            'Avg Our Price (Retail)': df['Our Price'].mean() if 'Our Price' in df.columns else 0,
+            'Min Our Price': df['Our Price'].min() if 'Our Price' in df.columns else 0,
+            'Max Our Price': df['Our Price'].max() if 'Our Price' in df.columns else 0,
+            'Total Cost Value': (df['Quantity'] * df['Our Cost']).sum() if 'Our Cost' in df.columns else 0,
+            'Avg Our Cost': df['Our Cost'].mean() if 'Our Cost' in df.columns else 0,
+            'Estimated Gross Margin %': (
+                (1 - (df['Our Cost'].sum() / df['Our Price'].sum())) * 100
+                if ('Our Cost' in df.columns and 'Our Price' in df.columns and df['Our Price'].sum() > 0)
+                else 0
+            ),
         }
         
         # Count competitors per product
