@@ -76,6 +76,14 @@ def _get_comparison_data(upload):
         .all()
     )
     competitor_names = [c[0] for c in competitors]
+    # Put our site first (robust match: DIM_KAVA / DIM KAVA / DIMKAVA)
+    def is_dimkava(name: str) -> bool:
+        n = (name or '').strip().lower().replace(' ', '_')
+        return n in {'dim_kava', 'dimkava'}
+    dim_names = [c for c in competitor_names if is_dimkava(c)]
+    if dim_names:
+        dim = dim_names[0]
+        competitor_names = [dim] + [c for c in competitor_names if c != dim]
     
     # Format products with their competitor prices
     formatted_products = []
@@ -225,6 +233,14 @@ def export_to_excel(upload_id):
         .all()
     )
     competitor_names = [c[0] for c in competitors]
+    # Put our site first (robust match: DIM_KAVA / DIM KAVA / DIMKAVA)
+    def is_dimkava(name: str) -> bool:
+        n = (name or '').strip().lower().replace(' ', '_')
+        return n in {'dim_kava', 'dimkava'}
+    dim_names = [c for c in competitor_names if is_dimkava(c)]
+    if dim_names:
+        dim = dim_names[0]
+        competitor_names = [dim] + [c for c in competitor_names if c != dim]
     
     # Build main comparison table
     comparison_rows = []
