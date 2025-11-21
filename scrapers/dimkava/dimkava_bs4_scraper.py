@@ -19,6 +19,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from config import DIMKAVA_CONFIG, SELENIUM_CONFIG
 from utils.logger import setup_logger
 from utils.excel_writer import save_to_excel, save_to_csv
+from utils.model_extractor import extract_model
 
 
 logger = setup_logger("dimkava_bs4_scraper")
@@ -54,46 +55,150 @@ class DimKavaBS4Scraper:
         logger.info("WebDriver setup complete")
         
     def load_page_and_wait(self, url: str):
-        """Load page and wait for all products to load"""
+        """Load page and wait for all products to load using dynamic scrolling"""
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        
         logger.info(f"Loading page: {url}")
         self.driver.get(url)
         
         # Initial wait for page to start loading
         time.sleep(4)
         
-        # Scroll down multiple times to trigger lazy loading
-        scroll_pause = DIMKAVA_CONFIG.get("scroll_pause", 3)
-        logger.info("Scrolling to load all products...")
+        # Simple scrolling strategy - scroll until count stabilizes
+        scroll_pause = 2  # 2 seconds between scrolls (you said this works)
+        max_scrolls = 20  # Maximum scrolls
+        stable_threshold = 3  # Stop after 3 stable counts
         
-        for i in range(DIMKAVA_CONFIG.get("num_scrolls", 5)):
+        logger.info(f"Scrolling to load all products (scroll + {scroll_pause}s wait)...")
+        
+        previous_count = 0
+        stable_count = 0
+        
+        for i in range(max_scrolls):
             # Scroll to bottom
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(scroll_pause)
             
             # Check how many products loaded
-            from selenium.webdriver.common.by import By
             try:
                 titles = self.driver.find_elements(By.CLASS_NAME, "un-product-title")
-                logger.info(f"Scroll {i+1}/5: {len(titles)} products visible")
+                current_count = len(titles)
+                logger.info(f"Scroll {i+1}/{max_scrolls}: {current_count} products visible")
+                
+                # Check if count is stable
+                if current_count == previous_count:
+                    stable_count += 1
+                    if stable_count >= stable_threshold:
+                        logger.info(f"Product count stabilized at {current_count}. Stopping scrolls.")
+                        break
+                else:
+                    stable_count = 0  # Reset if count changed
+                    previous_count = current_count
             except:
                 pass
         
         # Final wait for dynamic content to load
-        wait_time = DIMKAVA_CONFIG.get("wait_for_load", 8)
-        logger.info(f"Waiting {wait_time} more seconds for all products to finish loading...")
-        time.sleep(wait_time)
+        logger.info(f"Waiting 3 more seconds for final content...")
+        time.sleep(3)
+        
+        # Get final count using multiple selectors
+        final_count = 0
+        try:
+            # Primary selector
+            final_titles = self.driver.find_elements(By.CLASS_NAME, "un-product-title")
+            final_count = len(final_titles)
+            logger.info(f"Final product count (un-product-title): {final_count}")
+            
+            # Alternative selectors to check
+            alt_selectors = [
+                (By.CSS_SELECTOR, "li.product"),
+                (By.CSS_SELECTOR, ".product-item"),
+                (By.CSS_SELECTOR, "[class*='product']"),
+                (By.CSS_SELECTOR, "ul.products li"),
+            ]
+            for selector_type, selector_value in alt_selectors:
+                try:
+                    alt_elements = self.driver.find_elements(selector_type, selector_value)
+                    if len(alt_elements) > final_count:
+                        logger.info(f"  Alternative selector {selector_value} found {len(alt_elements)} elements")
+                except:
+                    pass
+            
+            # Also check HTML source directly - this is critical for WordPress lazy loading
+            html_source = self.driver.page_source
+            html_count = html_source.count('un-product-title')
+            logger.info(f"  HTML source contains 'un-product-title' {html_count} times")
+            
+            # Check for different variations in HTML
+            variations = [
+                'un-product-title',
+                'product-title',
+                'product_item',
+                'woocommerce-loop-product__title',
+            ]
+            for variant in variations:
+                variant_count = html_source.count(variant)
+                if variant_count > 0:
+                    logger.info(f"  HTML contains '{variant}': {variant_count} times")
+            
+            if html_count > final_count:
+                logger.warning(f"  WARNING: HTML has {html_count} occurrences but only {final_count} elements found!")
+                logger.warning(f"  This suggests elements are in HTML but not fully rendered in DOM.")
+                logger.warning(f"  Trying to force re-render by scrolling again...")
+                
+                # Try to force browser to render all elements
+                self.driver.execute_script("""
+                    // Force all images and lazy-loaded content to load
+                    window.scrollTo(0, 0);
+                    window.scrollTo(0, document.body.scrollHeight);
+                    
+                    // Trigger any pending AJAX requests
+                    if (window.jQuery) {
+                        jQuery(window).trigger('scroll');
+                    }
+                """)
+                time.sleep(5)
+                
+                # Re-check after forced render
+                try:
+                    final_titles_rerender = self.driver.find_elements(By.CLASS_NAME, "un-product-title")
+                    final_count_rerender = len(final_titles_rerender)
+                    if final_count_rerender > final_count:
+                        logger.info(f"  After forced re-render: {final_count_rerender} elements found!")
+                        final_count = final_count_rerender
+                except:
+                    pass
+        except Exception as e:
+            logger.warning(f"Could not get final product count: {e}")
         
         logger.info("Page loaded and content ready")
         
     def parse_with_bs4(self, html: str):
-        """Parse products using BeautifulSoup"""
-        logger.info("Parsing with BeautifulSoup...")
+        """Parse products using BeautifulSoup - parse directly from HTML source"""
+        logger.info("Parsing with BeautifulSoup (from HTML source, not DOM)...")
         
         soup = BeautifulSoup(html, 'lxml')
         
-        # Find all products by class 'un-product-title'
+        # Find all products by class 'un-product-title' - this will find ALL in HTML, even if not rendered
         product_titles = soup.find_all(class_='un-product-title')
-        logger.info(f"Found {len(product_titles)} products with un-product-title class")
+        logger.info(f"Found {len(product_titles)} products with un-product-title class in HTML source")
+        
+        # Also try alternative selectors if primary doesn't find enough
+        if len(product_titles) < 10:  # If we found very few, try alternatives
+            logger.info("Trying alternative selectors...")
+            alt_selectors = [
+                soup.find_all('li', class_=lambda x: x and 'product' in ' '.join(x) if x else False),
+                soup.find_all('div', class_=lambda x: x and 'product' in ' '.join(x) if x else False),
+            ]
+            for alt_products in alt_selectors:
+                if len(alt_products) > len(product_titles):
+                    logger.info(f"Alternative selector found {len(alt_products)} products")
+                    # Use the alternative if it found more
+                    if len(alt_products) > len(product_titles) * 1.5:
+                        product_titles = alt_products
+                        logger.info(f"Switching to alternative selector with {len(product_titles)} products")
         
         # Get all items (this is DeLonghi brand page, all should be DeLonghi)
         # Don't filter by text - the page is already filtered
@@ -173,10 +278,34 @@ class DimKavaBS4Scraper:
                     logger.warning(f"No price found for: {name[:50]}")
                     continue
                 
+                # Extract brand and model from name
+                brand = None
+                model = extract_model(name)
+                
+                # Try to extract brand from name
+                name_upper = name.upper()
+                if 'DELONGHI' in name_upper or 'DE LONGHI' in name_upper or "DE'LONGHI" in name_upper:
+                    brand = 'DeLonghi'
+                elif 'MELITTA' in name_upper or 'MELITA' in name_upper:
+                    brand = 'Melitta'
+                elif 'NIVONA' in name_upper:
+                    brand = 'Nivona'
+                
+                # If no brand found, try to infer from model or product codes
+                if not brand:
+                    # DeLonghi models often start with EC, ECAM, ESAM, BCO, etc.
+                    if model and any(model.upper().startswith(prefix) for prefix in ['EC', 'ECAM', 'ESAM', 'BCO', 'ETAM', 'DLSC', 'KG']):
+                        brand = 'DeLonghi'
+                    # Melitta models often start with F or contain specific patterns
+                    elif model and (model.upper().startswith('F') or 'BARISTA' in name_upper):
+                        brand = 'Melitta'
+                
                 # Build product dict
                 product = {
                     "index": idx,
                     "name": name,
+                    "brand": brand,
+                    "model": model,
                     "regular_price": regular_price,
                     "regular_price_str": regular_price_str,
                     "discount_price": discount_price,
@@ -258,20 +387,46 @@ class DimKavaBS4Scraper:
         """Main execution method"""
         try:
             logger.info("=" * 60)
-            logger.info("DIM KAVA DeLonghi Scraper Started")
+            logger.info("DIM KAVA Multi-Brand Scraper Started")
             logger.info("=" * 60)
             
             self.setup_driver()
-            for url in self.urls:
-                logger.info(f"Processing URL: {url}")
+            products_before_url = 0
+            
+            for idx, url in enumerate(self.urls, 1):
+                logger.info("")
+                logger.info(f"{'='*60}")
+                logger.info(f"Processing URL {idx}/{len(self.urls)}: {url}")
+                logger.info(f"{'='*60}")
+                
+                products_before_url = len(self.products)
                 self.load_page_and_wait(url)
+                
+                # Get HTML source AFTER all scrolling and waiting
+                logger.info("Getting final HTML page source...")
                 html = self.driver.page_source
-                logger.info(f"Got HTML page source ({len(html)} chars)")
+                logger.info(f"Got HTML page source ({len(html):,} chars)")
+                
+                # Count products in HTML
+                html_title_count = html.count('un-product-title')
+                logger.info(f"HTML contains 'un-product-title' {html_title_count} times")
+                
+                # Parse the HTML
                 self.parse_with_bs4(html)
+                
+                products_from_url = len(self.products) - products_before_url
+                logger.info(f"[OK] Collected {products_from_url} products from this URL")
+                logger.info(f"  Total products so far: {len(self.products)}")
+            
+            logger.info("")
+            logger.info("=" * 60)
+            logger.info("Saving results...")
+            logger.info("=" * 60)
             self.save_results()
             
+            logger.info("")
             logger.info("=" * 60)
-            logger.info(f"SUCCESS! Scraped {len(self.products)} products")
+            logger.info(f"SUCCESS! Scraped {len(self.products)} total products from {len(self.urls)} URLs")
             logger.info("=" * 60)
             
         except Exception as e:

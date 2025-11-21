@@ -50,14 +50,11 @@ ELITE_CONFIG = {
 DIMKAVA_CONFIG = {
     "urls": [
         # Brand category pages
-        "https://dimkava.ge/brand/delonghi/",
-        "https://dimkava.ge/brand/melita/",
-        "https://dimkava.ge/brand/nivona/",
+        "https://dimkava.ge/brand/delonghi/",  # Expected: 42 products
+        "https://dimkava.ge/brand/melita/",    # Expected: 22 products
+        "https://dimkava.ge/brand/nivona/",    # Expected: 10 products
     ],
-    "expected_products": 120,  # combined brands
-    "wait_for_load": 8,  # Seconds to wait after scrolling
-    "scroll_pause": 3,  # Seconds between scrolls
-    "num_scrolls": 5,  # Number of scrolls to trigger lazy loading
+    "expected_products": 72,  # 42 DeLonghi + 22 Melitta + 10 Nivona - 2 without price = 72
 }
 
 # COFFEEHUB Configuration
@@ -86,8 +83,8 @@ COFFEEPIN_CONFIG = {
 # VELI.STORE Configuration
 VELI_STORE_CONFIG = {
     "urls": [
-        # Main coffee machines catalog (English)
-        "https://veli.store/en/catalog/coffee-machines",
+        # DeLonghi category (English)
+        "https://veli.store/en/category/electronics/delonghi/9246/",
     ],
     "pages_per_url": 5,  # Number of pages to scan per URL
     "expected_products": 40,  # Approximate expected total
@@ -111,7 +108,7 @@ SELENIUM_CONFIG = {
     "page_load_timeout": 30,
     "load_more_wait": 1,  # Seconds to wait after clicking "Load More"
     "max_load_more_attempts": 30,  # Increased for 74 products
-    "headless": True,  # Set to True to run without browser window (required for Railway)
+    "headless": False,  # Set to False for local testing (WordPress lazy loading detection)
 }
 
 # User agents for rotation (if needed)

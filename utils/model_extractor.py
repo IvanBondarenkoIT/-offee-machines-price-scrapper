@@ -36,7 +36,8 @@ class ModelExtractor:
         r'Aroma\s*Zones\s*\d+X\d+/\d+\s*\w+',
         r'Aromaboy\s*\d+',
         r'Aromafresh\s*\w+',
-        r'F\d+-\d+\w+',
+        # F84/0-100EU and similar with optional slashes/hyphens segments
+        r'F\d+(?:[/-]\d+)?(?:[/-]?\d+)?\w*',
         r'E\d+',
         r'F\d+',
         # Nivona patterns
@@ -89,6 +90,18 @@ class ModelExtractor:
         
         # Convert to uppercase for pattern matching
         text = product_name.upper()
+
+        # Pre-normalize common spaced suffix cases so patterns can capture trailing letters
+        # Example: "EC 9255 M" -> "EC 9255M"; "ECAM 22.110 B" -> "ECAM 22.110B"
+        # Keep it conservative: only after EC/ECAM prefixes
+        text = re.sub(r"\b(EC\s*\d{2,5})\s+([A-Z]{1,2})\b", r"\1\2", text)
+        text = re.sub(r"\b(ECAM\s*[\d\.]{3,})\s+([A-Z]{1,2})\b", r"\1\2", text)
+
+        # Heuristic: Melitta Barista TS/T Smart SST normalization to a canonical series code
+        if 'MELITTA' in text and 'BARISTA' in text and 'SST' in text:
+            ts_like = (' TS ' in f' {text} ') or (' T SMART' in text) or ('TS ' in text) or ('TS,' in text)
+            if ts_like:
+                return 'BARISTA_TS_SST'
         
         # Try each pattern
         for pattern in cls.PATTERNS:

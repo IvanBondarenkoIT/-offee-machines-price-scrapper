@@ -18,7 +18,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 
 # Add project root to path
@@ -89,141 +89,168 @@ class VeliStoreScraper:
             return []
     
     def parse_with_bs4(self, soup, base_url):
-        """Parse page content with BeautifulSoup"""
+        """Parse page content with BeautifulSoup using user-provided structure"""
         products = []
         
-        # Find product containers - using the XPath pattern from template
-        # Looking for div containers that contain products
-        containers = soup.find_all('div', recursive=True)
+        # Find product containers
+        # User provided path: /html/body/div[3]/section/div/div[3]/div[4]/div[1]
+        # This suggests a grid structure. We'll look for the grid container first.
+        # The grid seems to be in a section.
         
-        logger.info(f"Found {len(containers)} potential containers")
+        # Strategy: Find all 'a' tags that look like product links, then traverse up to find the container
+        # Or find the grid container and iterate children.
         
-        for container in containers:
-            try:
-                # Look for product name link
-                name_link = container.find('a')
-                if not name_link:
-                    continue
-                    
-                name = name_link.get_text(strip=True)
-                if not name:
-                    continue
-                
-                # Filter by brands
-                if not name or not any(brand in name.lower() for brand in ['delonghi', 'melitta', 'nivona']):
-                    continue
-                
-                # Get product URL
-                url = name_link.get('href', '')
-                if url and not url.startswith('http'):
-                    url = f"https://veli.store{url}" if url.startswith('/') else f"https://veli.store/{url}"
-                
-                # Extract price information
-                # Based on XPath: 
-                # span[1] = current price (discount price)
-                # span[2] = old price (regular price)
-                regular_price = None
-                discount_price = None
-                price = None
-                
-                # Look for price div container
-                price_container = container.find('div')
-                if price_container:
-                    # Find all spans in price container
-                    price_spans = price_container.find_all('span')
-                    
-                    # Collect all prices from spans
-                    prices_found = []
-                    for span in price_spans:
-                        span_text = span.get_text(strip=True)
-                        # Look for price pattern
-                        price_match = re.search(r'(\d{1,4}(?:[.,]\d{2})?)', span_text)
-                        if price_match:
-                            price_str = price_match.group(1)
-                            try:
-                                if price_str.count('.') == 1 and price_str.count(',') == 0:
-                                    parsed_price = float(price_str)
-                                elif price_str.count(',') == 1 and price_str.count('.') == 0:
-                                    parsed_price = float(price_str.replace(',', '.'))
-                                else:
-                                    parsed_price = float(price_str.replace(',', '.'))
-                                
-                                # Only accept reasonable prices
-                                if 10 <= parsed_price <= 10000:
-                                    prices_found.append(parsed_price)
-                            except:
-                                pass
-                    
-                    # Determine regular and discount prices
-                    if len(prices_found) >= 2:
-                        # If we have 2+ prices, the larger is regular, smaller is discount
-                        prices_found.sort(reverse=True)
-                        regular_price = prices_found[0]
-                        discount_price = prices_found[1] if prices_found[1] < regular_price else None
-                    elif len(prices_found) == 1:
-                        regular_price = prices_found[0]
-                        discount_price = None
-                
-                # Set main price
-                if discount_price and discount_price != regular_price:
-                    price = discount_price
-                    has_discount = True
-                else:
-                    price = regular_price
-                    has_discount = False
-                
-                if not price:
-                    continue
-                
-                # Clean product name from price information and Georgian text
-                if '₾' in name or 'GEL' in name:
-                    name = re.split(r'[₾GEL]', name)[0].strip()
-                
-                # Remove Georgian text (ყავის აპარატი = coffee machine)
-                # Remove Georgian characters and common Georgian words
-                georgian_patterns = [
-                    r'ყავის\s+აპარატი\s*',  # coffee machine
-                    r'[ა-ჰ]+',  # any Georgian characters
-                ]
-                
-                for pattern in georgian_patterns:
-                    name = re.sub(pattern, '', name, flags=re.IGNORECASE)
-                
-                # Clean up extra spaces
-                name = re.sub(r'\s+', ' ', name).strip()
-                
-                # Clean name for logging
-                clean_name = name.split('₾')[0].strip() if '₾' in name else name
-                
-                # Log price information (avoid Unicode issues)
-                try:
-                    if discount_price and discount_price != regular_price:
-                        logger.info(f"Found product: {clean_name.encode('ascii', 'ignore').decode()} - {regular_price} -> {discount_price} (discount)")
-                    else:
-                        logger.info(f"Found product: {clean_name.encode('ascii', 'ignore').decode()} - {price}")
-                except:
-                    # Fallback logging without product name
-                    if discount_price and discount_price != regular_price:
-                        logger.info(f"Found product with discount: {regular_price} -> {discount_price}")
-                    else:
-                        logger.info(f"Found product: {price}")
-                
-                product = {
-                    'name': name,
-                    'price': price,  # Main price (discount if available, regular otherwise)
-                    'regular_price': regular_price,
-                    'discount_price': discount_price,
-                    'has_discount': has_discount,
-                    'url': url,
-                    'source': 'VELI_STORE'
-                }
-                
-                products.append(product)
-                
-            except Exception as e:
-                logger.warning(f"Error parsing product container: {e}")
+        # Let's try to find the grid container based on the structure
+        # div[3]/section/div/div[3]/div[4] seems to be the grid
+        
+        # Since class names are likely dynamic (Next.js/React), we rely on structure or attributes.
+        # We can look for the 'section' tag and then drill down.
+        
+        potential_products = []
+        
+        # Fallback: Find all links that contain product-like hrefs (usually have IDs or specific patterns)
+        # But user gave specific XPaths. Let's try to map them to BS4.
+        
+        # Title link: .../span/a
+        # Price: .../div/span[1]
+        
+        # Let's look for all 'a' tags that might be titles.
+        # Usually they are inside a span as per user input.
+        
+        links = soup.find_all('a', href=True)
+        for link in links:
+            # Check if it's a product link (heuristic)
+            # Veli store product links usually look like /en/product/... or similar
+            # But we are in a category, so links might be relative.
+            
+            # User said: /html/body/div[3]/section/div/div[3]/div[4]/div[1]/div[1]/span/a
+            # This implies the 'a' is inside a 'span' which is inside a 'div' etc.
+            
+            parent_span = link.find_parent('span')
+            if not parent_span:
                 continue
-        
+                
+            # Go up to find the product card container
+            # span -> div -> div (card?)
+            card_div = parent_span.find_parent('div')
+            if not card_div:
+                continue
+            
+            # The card_div might be the inner wrapper.
+            # User: .../div[1]/div[1]/span/a -> card is div[1] (outer)
+            
+            # Let's try to extract info relative to this link
+            name = link.get_text(strip=True)
+            if not name:
+                continue
+                
+            # Filter by brands
+            if not any(brand in name.lower() for brand in ['delonghi', 'melitta', 'nivona']):
+                continue
+                
+            url = link['href']
+            if not url.startswith('http'):
+                url = f"https://veli.store{url}" if url.startswith('/') else f"https://veli.store/{url}"
+            
+            # Now find price. User says price is in .../div[2]/div[1]/div/span[1]
+            # The title was in .../div[1]/div[1]/span/a
+            # So they are siblings in the main container?
+            # Let's go up to the main container.
+            
+            # card_div is likely .../div[1] (if we went up from span)
+            # We need to go up one more level to find the sibling div[2] which has price?
+            # User: 
+            # Title: .../div[N]/div[1]/span/a
+            # Price: .../div[N]/div[1]/div/span[1] (Wait, user said div[1] for title, div[1] for price?)
+            
+            # Let's re-read user input carefully:
+            # Title: .../div[4]/div[1]/div[1]/span/a
+            # Price: .../div[4]/div[1]/div[1]/div/span/text()[1]
+            
+            # Ah, for the FIRST item (div[1]):
+            # Title: div[1]/span/a
+            # Price: div[1]/div/span
+            
+            # It seems Title and Price are close.
+            # Let's look for the price relative to the title link.
+            
+            # Usually price is in a sibling div or nearby.
+            # Let's search the whole card_div for text that looks like price.
+            
+            # We need to be careful not to mix products.
+            # Let's assume card_div is the container for ONE product info block.
+            # Or maybe we need to go up one level to the real card container.
+            
+            container = card_div.find_parent('div') # This should be the main product cell
+            if not container:
+                continue
+
+            # Now search for price inside this container
+            # We look for text matching price pattern
+            
+            price_text_nodes = container.find_all(string=re.compile(r'\d+[.,]\d+'))
+            
+            regular_price = None
+            discount_price = None
+            
+            prices = []
+            for node in price_text_nodes:
+                text = node.strip()
+                # Clean text
+                text = text.replace('₾', '').replace('GEL', '').strip()
+                try:
+                    val = float(text.replace(',', '.')) # Assuming dot or comma decimal
+                    if 10 < val < 10000: # Sanity check
+                        prices.append(val)
+                except:
+                    pass
+            
+            # Deduplicate and sort
+            prices = sorted(list(set(prices)), reverse=True)
+            
+            if not prices:
+                continue
+                
+            if len(prices) >= 2:
+                regular_price = prices[0]
+                discount_price = prices[1]
+            else:
+                regular_price = prices[0]
+                discount_price = None
+            
+            # Set main price
+            if discount_price:
+                price = discount_price
+                has_discount = True
+            else:
+                price = regular_price
+                has_discount = False
+            
+            # Clean name
+            clean_name = name
+            georgian_patterns = [
+                r'ყავის\s+აპარატი\s*',
+                r'[ა-ჰ]+',
+            ]
+            for pattern in georgian_patterns:
+                clean_name = re.sub(pattern, '', clean_name, flags=re.IGNORECASE)
+            clean_name = re.sub(r'\s+', ' ', clean_name).strip()
+            
+            product = {
+                'name': clean_name,
+                'price': price,
+                'regular_price': regular_price,
+                'discount_price': discount_price,
+                'has_discount': has_discount,
+                'url': url,
+                'source': 'VELI_STORE'
+            }
+            
+            # Avoid duplicates in the list
+            if not any(p['url'] == url for p in products):
+                products.append(product)
+                logger.info(f"Found: {clean_name} - {price}")
+
         logger.info(f"Successfully parsed {len(products)} products from {base_url}")
         return products
     
@@ -246,7 +273,6 @@ class VeliStoreScraper:
                 logger.info(f"Page {page_num}: Found {len(page_products)} products")
                 
                 self.products.extend(page_products)
-                logger.info(f"Total so far: {len(self.products)} products")
                 
                 # Wait between pages
                 if page_num < self.config['pages_per_url']:
@@ -261,23 +287,17 @@ class VeliStoreScraper:
             logger.warning("No products to save")
             return
         
-        # Create output directory
         output_dir = Path("data/output")
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"veli_store_prices_{timestamp}.xlsx"
         filepath = output_dir / filename
         
-        # Create DataFrame
         df = pd.DataFrame(products)
-        
-        # Save to Excel
         df.to_excel(filepath, index=False)
         logger.info(f"[OK] Saved to Excel: {filepath}")
         
-        # Also save to CSV
         csv_filename = f"veli_store_prices_{timestamp}.csv"
         csv_filepath = output_dir / csv_filename
         df.to_csv(csv_filepath, index=False, encoding='utf-8')
@@ -289,17 +309,12 @@ class VeliStoreScraper:
         """Main execution method"""
         try:
             logger.info("Starting VELI.STORE scraper...")
-            
-            # Setup driver
             self.setup_driver()
-            
-            # Scrape all pages
             products = self.scrape_all_pages()
             
             if products:
-                # Save results
                 self.save_to_excel(products)
-                logger.info(f"SUCCESS! Scraped {len(products)} products from {len(self.config['urls'])} URLs")
+                logger.info(f"SUCCESS! Scraped {len(products)} products")
             else:
                 logger.warning("No products found")
             
@@ -314,8 +329,6 @@ class VeliStoreScraper:
 def main():
     scraper = VeliStoreScraper()
     scraper.run()
-    print(f"[OK] VELI.STORE scraper completed successfully!")
-    print(f"[INFO] Scraped {len(scraper.products)} products")
 
 if __name__ == "__main__":
     main()
