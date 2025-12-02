@@ -63,44 +63,78 @@ class DimKavaBS4Scraper:
         logger.info(f"Loading page: {url}")
         self.driver.get(url)
         
-        # Initial wait for page to start loading
-        time.sleep(4)
+        # Initial wait for page to start loading (WordPress needs time)
+        logger.info("Waiting for initial page load...")
+        time.sleep(5)
         
-        # Simple scrolling strategy - scroll until count stabilizes
-        scroll_pause = 2  # 2 seconds between scrolls (you said this works)
-        max_scrolls = 20  # Maximum scrolls
-        stable_threshold = 3  # Stop after 3 stable counts
+        # WordPress lazy loading strategy - scroll slowly and wait longer
+        scroll_pause = 3  # 3 seconds between scrolls for WordPress
+        max_scrolls = 25  # More scrolls for long pages
+        stable_threshold = 4  # Wait for 4 stable counts (WordPress is slow)
         
-        logger.info(f"Scrolling to load all products (scroll + {scroll_pause}s wait)...")
+        logger.info(f"Scrolling to load all products (WordPress lazy loading)...")
+        logger.info(f"  Scroll pause: {scroll_pause}s, Max scrolls: {max_scrolls}, Stability: {stable_threshold}")
         
         previous_count = 0
         stable_count = 0
+        no_change_scrolls = 0
         
         for i in range(max_scrolls):
-            # Scroll to bottom
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            # Scroll to bottom smoothly (better for WordPress)
+            current_height = self.driver.execute_script("return document.body.scrollHeight")
+            self.driver.execute_script(f"window.scrollTo(0, {current_height});")
+            
+            # Wait for WordPress to load content
+            logger.info(f"Scroll {i+1}/{max_scrolls}: Waiting {scroll_pause}s for content to load...")
             time.sleep(scroll_pause)
             
             # Check how many products loaded
             try:
                 titles = self.driver.find_elements(By.CLASS_NAME, "un-product-title")
                 current_count = len(titles)
-                logger.info(f"Scroll {i+1}/{max_scrolls}: {current_count} products visible")
                 
-                # Check if count is stable
-                if current_count == previous_count:
-                    stable_count += 1
-                    if stable_count >= stable_threshold:
-                        logger.info(f"Product count stabilized at {current_count}. Stopping scrolls.")
-                        break
-                else:
-                    stable_count = 0  # Reset if count changed
+                if current_count > previous_count:
+                    logger.info(f"  [+] Products loaded: {previous_count} -> {current_count} (+{current_count - previous_count})")
+                    stable_count = 0  # Reset stability counter
+                    no_change_scrolls = 0
                     previous_count = current_count
-            except:
+                elif current_count == previous_count:
+                    stable_count += 1
+                    no_change_scrolls += 1
+                    logger.info(f"  [=] No new products: {current_count} (stable: {stable_count}/{stable_threshold})")
+                    
+                    # If no change for multiple scrolls, we might be at the end
+                    if stable_count >= stable_threshold:
+                        logger.info(f"  [OK] Product count stabilized at {current_count}. Stopping scrolls.")
+                        break
+                    
+                    # If really no change, try waiting a bit longer
+                    if no_change_scrolls >= 2:
+                        logger.info(f"  [WAIT] No change detected, waiting extra 2 seconds...")
+                        time.sleep(2)
+                else:
+                    # Count decreased? Shouldn't happen, but reset
+                    logger.warning(f"  [!] Product count decreased: {previous_count} -> {current_count}")
+                    previous_count = current_count
+                    stable_count = 0
+                    
+            except Exception as e:
+                logger.warning(f"  ⚠ Error checking products: {e}")
                 pass
         
-        # Final wait for dynamic content to load
-        logger.info(f"Waiting 3 more seconds for final content...")
+        # Final wait for any remaining dynamic content to load
+        logger.info(f"Final wait: 5 seconds for WordPress to finish loading...")
+        time.sleep(5)
+        
+        # Try to trigger any pending lazy load
+        logger.info("Triggering final lazy load...")
+        self.driver.execute_script("""
+            // Scroll to top and back to bottom to trigger any missed lazy loads
+            window.scrollTo(0, 0);
+            setTimeout(function() {
+                window.scrollTo(0, document.body.scrollHeight);
+            }, 1000);
+        """)
         time.sleep(3)
         
         # Get final count using multiple selectors
@@ -145,31 +179,50 @@ class DimKavaBS4Scraper:
             
             if html_count > final_count:
                 logger.warning(f"  WARNING: HTML has {html_count} occurrences but only {final_count} elements found!")
-                logger.warning(f"  This suggests elements are in HTML but not fully rendered in DOM.")
-                logger.warning(f"  Trying to force re-render by scrolling again...")
+                logger.warning(f"  This suggests WordPress lazy loading hasn't finished.")
+                logger.warning(f"  Trying aggressive re-render strategy...")
                 
-                # Try to force browser to render all elements
+                # Aggressive strategy for WordPress lazy loading
                 self.driver.execute_script("""
-                    // Force all images and lazy-loaded content to load
+                    // Scroll to top first
                     window.scrollTo(0, 0);
-                    window.scrollTo(0, document.body.scrollHeight);
-                    
-                    // Trigger any pending AJAX requests
+                """)
+                time.sleep(2)
+                
+                # Scroll down in smaller increments
+                logger.info("  Performing incremental scroll to trigger lazy load...")
+                scroll_height = self.driver.execute_script("return document.body.scrollHeight")
+                scroll_step = scroll_height // 10  # Divide into 10 steps
+                
+                for step in range(10):
+                    scroll_position = scroll_step * (step + 1)
+                    self.driver.execute_script(f"window.scrollTo(0, {scroll_position});")
+                    time.sleep(1)  # Short pause at each step
+                
+                # Final scroll to bottom
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(3)
+                
+                # Trigger jQuery events if available
+                self.driver.execute_script("""
                     if (window.jQuery) {
                         jQuery(window).trigger('scroll');
+                        jQuery(window).trigger('resize');
                     }
                 """)
-                time.sleep(5)
+                time.sleep(3)
                 
-                # Re-check after forced render
+                # Re-check after aggressive render
                 try:
                     final_titles_rerender = self.driver.find_elements(By.CLASS_NAME, "un-product-title")
                     final_count_rerender = len(final_titles_rerender)
                     if final_count_rerender > final_count:
-                        logger.info(f"  After forced re-render: {final_count_rerender} elements found!")
+                        logger.info(f"  [OK] After aggressive re-render: {final_count_rerender} elements found! (+{final_count_rerender - final_count})")
                         final_count = final_count_rerender
-                except:
-                    pass
+                    else:
+                        logger.info(f"  Still {final_count_rerender} elements. Using HTML source for parsing.")
+                except Exception as e:
+                    logger.warning(f"  Error in re-render check: {e}")
         except Exception as e:
             logger.warning(f"Could not get final product count: {e}")
         
@@ -280,7 +333,7 @@ class DimKavaBS4Scraper:
                 
                 # Extract brand and model from name
                 brand = None
-                model = extract_model(name)
+                model = self._extract_model_enhanced(name)
                 
                 # Try to extract brand from name
                 name_upper = name.upper()
@@ -290,15 +343,28 @@ class DimKavaBS4Scraper:
                     brand = 'Melitta'
                 elif 'NIVONA' in name_upper:
                     brand = 'Nivona'
+                elif 'JURA' in name_upper:
+                    brand = 'Jura'
+                elif 'SAECO' in name_upper:
+                    brand = 'Saeco'
+                elif 'GAGGIA' in name_upper:
+                    brand = 'Gaggia'
                 
                 # If no brand found, try to infer from model or product codes
-                if not brand:
+                if not brand and model:
                     # DeLonghi models often start with EC, ECAM, ESAM, BCO, etc.
-                    if model and any(model.upper().startswith(prefix) for prefix in ['EC', 'ECAM', 'ESAM', 'BCO', 'ETAM', 'DLSC', 'KG']):
+                    if any(model.upper().startswith(prefix) for prefix in ['EC', 'ECAM', 'ESAM', 'BCO', 'ETAM', 'DLSC', 'KG', 'KB', 'CT', 'ICM']):
                         brand = 'DeLonghi'
                     # Melitta models often start with F or contain specific patterns
-                    elif model and (model.upper().startswith('F') or 'BARISTA' in name_upper):
+                    elif model.upper().startswith('F') or 'BARISTA' in name_upper:
                         brand = 'Melitta'
+                    # Nivona models start with NI
+                    elif model.upper().startswith('NI'):
+                        brand = 'Nivona'
+                
+                # Validate product before adding
+                if not self._is_valid_product(name, final_price, brand, model):
+                    continue
                 
                 # Build product dict
                 product = {
@@ -318,6 +384,7 @@ class DimKavaBS4Scraper:
                 }
                 
                 self.products.append(product)
+                logger.debug(f"ADDED: {name[:50]} | Brand: {brand} | Model: {model} | Price: {final_price}")
                 
                 if idx % 10 == 0:
                     logger.info(f"Progress: {idx}/{len(product_items)} products...")
@@ -382,6 +449,168 @@ class DimKavaBS4Scraper:
         for p in patterns:
             name = re.sub(p, "", name, flags=re.IGNORECASE).strip()
         return name.strip()
+    
+    def _is_accessory(self, name: str, price: float = 0) -> bool:
+        """
+        Check if product is an accessory (not a coffee machine)
+        
+        Args:
+            name: Product name
+            price: Product price (helps distinguish - coffee machines are expensive)
+            
+        Returns:
+            True if accessory
+        """
+        name_upper = name.upper()
+        
+        # If price is very high (>1000), it's likely a coffee machine, not accessory
+        if price > 1000:
+            return False
+        
+        # Accessory keywords
+        accessory_keywords = [
+            'PITCHER', 'ПИТЧЕР',
+            'TAMPER', 'ТЕМПЕР',
+            'FILTER', 'ФИЛЬТР',
+            'DESCAL', 'ДЕКАЛЬЦ',
+            'CLEAN', 'ОЧИСТ',
+            'TABLET', 'ТАБЛЕТК',
+            'LIQUID', 'ЖИДКОСТ',
+            'BRUSH', 'ЩЕТК',
+            'CLOTH', 'САЛФЕТК',
+            'MAT', 'КОВРИК',
+            'SPOON', 'ЛОЖК',
+            'CUP', 'ЧАШК',
+            'GLASS', 'СТАКАН',
+            'MUG', 'КРУЖК',
+            'CARTRIDGE', 'КАРТРИДЖ',
+            'FILTERBAG', 'ФИЛЬТР-ПАКЕТ',
+        ]
+        
+        for keyword in accessory_keywords:
+            if keyword in name_upper:
+                return True
+        
+        return False
+    
+    def _is_spare_part(self, name: str) -> bool:
+        """
+        Check if product is a spare part
+        
+        Args:
+            name: Product name
+            
+        Returns:
+            True if spare part
+        """
+        name_upper = name.upper()
+        
+        # Spare part keywords
+        spare_keywords = [
+            'ASSY', 'PCB', 'TUBE', 'FUNNEL', 'SUPPORT',
+            'DRAINING', 'CARAF', 'TANK', 'PIPE', 'CONNECTOR',
+            'VALVE', 'GASKET', 'SEAL', 'SPRING', 'SCREW',
+            'NUT', 'BOLT', 'WASHER', 'O-RING', 'BEARING',
+            'MOTOR', 'PUMP', 'SENSOR', 'SWITCH', 'CABLE',
+            'WIRE', 'BOARD', 'DISPLAY', 'BUTTON', 'KNOB',
+        ]
+        
+        for keyword in spare_keywords:
+            if keyword in name_upper:
+                return True
+        
+        return False
+    
+    def _is_valid_product(self, name: str, price: float, brand: Optional[str], model: Optional[str]) -> bool:
+        """
+        Validate if product should be included in results
+        
+        Criteria:
+        - Must have a price > 50 GEL (coffee machines are expensive)
+        - Must not be an accessory
+        - Must not be a spare part
+        - Must have a brand
+        - Name should be reasonable length
+        
+        Args:
+            name: Product name
+            price: Product price
+            brand: Extracted brand
+            model: Extracted model
+            
+        Returns:
+            True if valid product
+        """
+        # Must have price
+        if not price or price < 50:
+            logger.debug(f"SKIP: Price too low ({price}): {name[:50]}")
+            return False
+        
+        # Must not be accessory
+        if self._is_accessory(name, price):
+            logger.debug(f"SKIP: Accessory: {name[:50]}")
+            return False
+        
+        # Must not be spare part
+        if self._is_spare_part(name):
+            logger.debug(f"SKIP: Spare part: {name[:50]}")
+            return False
+        
+        # Must have brand
+        if not brand:
+            logger.debug(f"SKIP: No brand: {name[:50]}")
+            return False
+        
+        # Name should be reasonable length
+        if len(name) < 10:
+            logger.debug(f"SKIP: Name too short: {name}")
+            return False
+        
+        return True
+    
+    def _extract_model_enhanced(self, name: str) -> Optional[str]:
+        """
+        Enhanced model extraction with multiple attempts
+        
+        Args:
+            name: Product name
+            
+        Returns:
+            Extracted model or None
+        """
+        # Attempt 1: Standard extractor
+        model = extract_model(name)
+        if model:
+            return model
+        
+        # Attempt 2: Look for model in parentheses
+        match = re.search(r'\(([A-Z0-9\s\.]+)\)', name)
+        if match:
+            potential_model = match.group(1).strip()
+            # Clean up spaces
+            potential_model = re.sub(r'\s+', '', potential_model)
+            if len(potential_model) >= 5:
+                return potential_model
+        
+        # Attempt 3: Look after brand name
+        name_upper = name.upper()
+        brands = ['DELONGHI', 'DE LONGHI', 'MELITTA', 'NIVONA', 'JURA', 'SAECO', 'GAGGIA']
+        
+        for brand in brands:
+            if brand in name_upper:
+                # Split by brand and take what comes after
+                parts = name_upper.split(brand)
+                if len(parts) > 1:
+                    after_brand = parts[1].strip()
+                    # Extract first word/code that looks like a model
+                    match = re.search(r'^([A-Z0-9\s\.]+?)(?:\s|$)', after_brand)
+                    if match:
+                        potential_model = match.group(1).strip()
+                        potential_model = re.sub(r'\s+', '', potential_model)
+                        if len(potential_model) >= 4:
+                            return potential_model
+        
+        return None
 
     def run(self):
         """Main execution method"""

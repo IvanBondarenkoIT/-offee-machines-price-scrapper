@@ -8,6 +8,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from utils.model_extractor import ModelExtractor
+from utils.inventory_parser import InventoryParser
+from utils.enhanced_matcher import EnhancedMatcher
 
 class PriceComparisonBuilder:
     """Build price comparison table"""
@@ -25,53 +27,81 @@ class PriceComparisonBuilder:
         self.model_map = {}
     
     def load_inventory(self) -> pd.DataFrame:
-        """Load inventory from остатки.xls"""
-        print("\n[1/6] Loading INVENTORY...")
+        """Load inventory from остатки.xls using InventoryParser"""
+        print("\n[1/6] Loading INVENTORY (using InventoryParser)...")
         
         file_path = self.inbox_dir / 'остатки.xls'
         if not file_path.exists():
             print("[WARNING] Inventory file not found")
             return pd.DataFrame()
         
-        df = pd.read_excel(file_path, header=None)
-        
-        products = []
-        for i in range(len(df)):
-            row = df.iloc[i]
-            row_values = [v for v in row.values if pd.notna(v)]
+        try:
+            # Use new InventoryParser
+            parser = InventoryParser()
+            df_all = parser.parse_file(str(file_path))
             
-            if len(row_values) < 4:
-                continue
+            # Get only valid products
+            df_valid = parser.get_valid_products()
             
-            row_str = ' '.join([str(v) for v in row_values])
-            if 'delonghi' not in row_str.lower() and 'melitta' not in row_str.lower() and 'nivona' not in row_str.lower():
-                continue
+            # Convert to format expected by rest of code
+            df_result = df_valid.rename(columns={
+                'name': 'name',
+                'quantity': 'quantity',
+                'price': 'price',
+                'model': 'model',
+                'brand': 'brand'
+            })
+            df_result['source'] = 'INVENTORY'
             
-            try:
-                name = qty = price = None
+            print(f"[OK] Loaded {len(df_result)} valid products from INVENTORY")
+            print(f"     (Total parsed: {len(df_all)}, Valid: {len(df_valid)})")
+            print(f"     Brands: {df_result['brand'].value_counts().to_dict()}")
+            
+            return df_result
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to parse inventory: {e}")
+            print("[FALLBACK] Using old parsing method...")
+            
+            # Fallback to old method if new parser fails
+            df = pd.read_excel(file_path, header=None)
+            products = []
+            for i in range(len(df)):
+                row = df.iloc[i]
+                row_values = [v for v in row.values if pd.notna(v)]
                 
-                if len(row_values) == 5:
-                    name, qty, price = str(row_values[1]), row_values[2], row_values[3]
-                elif len(row_values) == 6:
-                    name, qty, price = str(row_values[1]), row_values[3], row_values[4]
-                elif len(row_values) == 7:
-                    name, qty, price = str(row_values[1]), row_values[4], row_values[5]
+                if len(row_values) < 4:
+                    continue
                 
-                if name and ('delonghi' in name.lower() or 'melitta' in name.lower() or 'nivona' in name.lower()):
-                    if isinstance(qty, (int, float)) and isinstance(price, (int, float)):
-                        if qty > 0 and price > 0:
-                            products.append({
-                                'name': name,
-                                'quantity': int(qty),
-                                'price': float(price),
-                                'source': 'INVENTORY'
-                            })
-            except:
-                pass
-        
-        df_result = pd.DataFrame(products)
-        print(f"[OK] Loaded {len(df_result)} products from INVENTORY")
-        return df_result
+                row_str = ' '.join([str(v) for v in row_values])
+                if 'delonghi' not in row_str.lower() and 'melitta' not in row_str.lower() and 'nivona' not in row_str.lower():
+                    continue
+                
+                try:
+                    name = qty = price = None
+                    
+                    if len(row_values) == 5:
+                        name, qty, price = str(row_values[1]), row_values[2], row_values[3]
+                    elif len(row_values) == 6:
+                        name, qty, price = str(row_values[1]), row_values[3], row_values[4]
+                    elif len(row_values) == 7:
+                        name, qty, price = str(row_values[1]), row_values[4], row_values[5]
+                    
+                    if name and ('delonghi' in name.lower() or 'melitta' in name.lower() or 'nivona' in name.lower()):
+                        if isinstance(qty, (int, float)) and isinstance(price, (int, float)):
+                            if qty > 0 and price > 0:
+                                products.append({
+                                    'name': name,
+                                    'quantity': int(qty),
+                                    'price': float(price),
+                                    'source': 'INVENTORY'
+                                })
+                except:
+                    pass
+            
+            df_result = pd.DataFrame(products)
+            print(f"[OK] Loaded {len(df_result)} products from INVENTORY (fallback method)")
+            return df_result
     
     def load_scraped_data(self) -> Dict[str, pd.DataFrame]:
         """Load all scraped data"""
@@ -109,15 +139,37 @@ class PriceComparisonBuilder:
         return result
     
     def extract_models_from_all_sources(self):
-        """Extract models from all sources and build mapping with normalization"""
-        print("\n[3/6] Extracting MODELS...")
+        """Extract models from all sources and build mapping with EnhancedMatcher"""
+        print("\n[3/6] Extracting MODELS and MATCHING (using EnhancedMatcher)...")
         
+        # Prepare data for EnhancedMatcher
+        # For Dim Kava specifically, use EnhancedMatcher
+        if 'DIM_KAVA' in self.scraped_data and self.inventory is not None and len(self.inventory) > 0:
+            print("\n  Using EnhancedMatcher for Dim Kava...")
+            
+            # Match Dim Kava with inventory using EnhancedMatcher
+            matcher = EnhancedMatcher(self.inventory, self.scraped_data['DIM_KAVA'])
+            matched_df = matcher.match_products()
+            
+            # Generate and save report
+            report = matcher.generate_report('data/output/dimkava_matching_report.txt')
+            print(f"\n  [OK] EnhancedMatcher: {len(matched_df)} matches found")
+            print(f"       Report saved: data/output/dimkava_matching_report.txt")
+            
+            # Save matched products
+            if len(matched_df) > 0:
+                matched_df.to_excel('data/output/dimkava_matched_products.xlsx', index=False)
+                print(f"       Matched products saved: data/output/dimkava_matched_products.xlsx")
+        
+        # Continue with old method for all sources (for backward compatibility)
+        print("\n  Building model map for all sources...")
         all_products = []
         
         # Process inventory
         if self.inventory is not None and len(self.inventory) > 0:
             for idx, row in self.inventory.iterrows():
-                model = ModelExtractor.extract_model(row['name'])
+                # Use model from inventory if already extracted
+                model = row.get('model') if 'model' in row and pd.notna(row.get('model')) else ModelExtractor.extract_model(row['name'])
                 if model:
                     # Normalize for matching
                     model_normalized = ModelExtractor.normalize_for_matching(model)
@@ -127,7 +179,7 @@ class PriceComparisonBuilder:
                         'name': row['name'],
                         'model': model,  # Original model
                         'model_normalized': model_normalized,  # For matching
-                        'quantity': row['quantity'],
+                        'quantity': row.get('quantity', 0),
                         'price': row['price'],
                         'regular_price': None,
                         'discount_price': None,
@@ -137,14 +189,15 @@ class PriceComparisonBuilder:
         # Process scraped data
         for source_name, df in self.scraped_data.items():
             for idx, row in df.iterrows():
-                model = ModelExtractor.extract_model(row['name'])
+                # Use model from scraper if already extracted
+                model = row.get('model') if 'model' in row and pd.notna(row.get('model')) else ModelExtractor.extract_model(row['name'])
                 if model:
                     # Normalize for matching
                     model_normalized = ModelExtractor.normalize_for_matching(model)
                     
                     # Normalize price data for different scraper formats
                     if 'final_price' in row:
-                        # ALTA/KONTAKT/ELITE format
+                        # ALTA/KONTAKT/ELITE/DIMKAVA format
                         price = row['final_price']
                         regular_price = row.get('regular_price')
                         discount_price = row.get('discount_price')
@@ -182,7 +235,7 @@ class PriceComparisonBuilder:
                 self.model_map[model_norm] = []
             self.model_map[model_norm].append(product)
         
-        # Second pass: fuzzy matching for unmatched inventory items
+        # Second pass: fuzzy matching using ModelExtractor.match_models_fuzzy
         inventory_products = [p for p in all_products if p['source'] == 'INVENTORY']
         scraped_products = [p for p in all_products if p['source'] != 'INVENTORY']
         
@@ -192,25 +245,31 @@ class PriceComparisonBuilder:
             if len([p for p in self.model_map[inv_product['model_normalized']] if p['source'] != 'INVENTORY']) > 0:
                 continue  # Already has competitors
             
-            # Try fuzzy matching - look for base model match
-            inv_norm = inv_product['model_normalized']
+            # Try fuzzy matching with confidence
+            inv_model = inv_product['model']
             
             for scraped_product in scraped_products:
-                scraped_norm = scraped_product['model_normalized']
+                scraped_model = scraped_product['model']
                 
-                # Check if one is substring of another (base model match)
-                # EC9255 should match EC9255M, EC9255T
-                # ECI341 should match ECI341BK, ECI341BZ
-                if len(inv_norm) >= 5 and len(scraped_norm) >= 5:
-                    if inv_norm in scraped_norm or scraped_norm in inv_norm:
-                        # Add to same group
-                        if scraped_product not in self.model_map[inv_norm]:
-                            self.model_map[inv_norm].append(scraped_product)
-                            fuzzy_matches += 1
+                # Use improved fuzzy matching
+                is_match, confidence = ModelExtractor.match_models_fuzzy(inv_model, scraped_model)
+                
+                if is_match and confidence >= 0.9:  # Only high-confidence matches
+                    # Add to same group
+                    inv_norm = inv_product['model_normalized']
+                    if scraped_product not in self.model_map[inv_norm]:
+                        self.model_map[inv_norm].append(scraped_product)
+                        fuzzy_matches += 1
         
-        print(f"[OK] Extracted {len(all_products)} products")
+        print(f"[OK] Extracted {len(all_products)} products total")
+        print(f"     - Inventory: {len(inventory_products)} products")
+        print(f"     - Scraped: {len(scraped_products)} products")
         print(f"[OK] Found {len(self.model_map)} unique normalized models")
-        print(f"[OK] Added {fuzzy_matches} fuzzy matches (base model matching)")
+        print(f"[OK] Added {fuzzy_matches} fuzzy matches (confidence >= 0.9)")
+        
+        # Show matching statistics
+        matched_inv = len([p for p in inventory_products if len([s for s in self.model_map[p['model_normalized']] if s['source'] != 'INVENTORY']) > 0])
+        print(f"[OK] Matched {matched_inv}/{len(inventory_products)} inventory products ({matched_inv/len(inventory_products)*100:.1f}%)")
         
         return all_products
     

@@ -280,6 +280,112 @@ class ModelExtractor:
             variants.append(with_spaces)
         
         return list(set(variants))
+    
+    @classmethod
+    def match_models_fuzzy(cls, model1: str, model2: str) -> Tuple[bool, float]:
+        """
+        Fuzzy match with confidence score
+        
+        Args:
+            model1: First model code
+            model2: Second model code
+            
+        Returns:
+            Tuple of (match: bool, confidence: float)
+            
+        Confidence levels:
+        - 1.0: Exact match after normalization
+        - 0.9: Base model match (color variant)
+        - 0.7: One character difference (typo tolerance)
+        - 0.0: No match
+        
+        Examples:
+            >>> ModelExtractor.match_models_fuzzy("ECAM290.61.SB", "ECAM 290.61 SB")
+            (True, 1.0)
+            >>> ModelExtractor.match_models_fuzzy("EC685.R", "EC685.W")
+            (True, 0.9)
+            >>> ModelExtractor.match_models_fuzzy("ECAM290.61", "ECAM290.81")
+            (False, 0.0)
+        """
+        if not model1 or not model2:
+            return (False, 0.0)
+        
+        # Level 1: Exact match after normalization
+        m1_norm = cls.normalize_for_matching(model1)
+        m2_norm = cls.normalize_for_matching(model2)
+        
+        if m1_norm == m2_norm:
+            return (True, 1.0)
+        
+        # Level 2: Base model match (remove color suffix)
+        # Remove last 1-2 letters (color codes like R, W, SB, TB, etc.)
+        m1_base = re.sub(r'[A-Z]{1,2}$', '', m1_norm)
+        m2_base = re.sub(r'[A-Z]{1,2}$', '', m2_norm)
+        
+        if m1_base == m2_base and len(m1_base) >= 5:
+            return (True, 0.9)
+        
+        # Level 3: Levenshtein distance = 1 (typo tolerance)
+        if cls._levenshtein_distance(m1_norm, m2_norm) == 1:
+            return (True, 0.7)
+        
+        return (False, 0.0)
+    
+    @staticmethod
+    def _levenshtein_distance(s1: str, s2: str) -> int:
+        """
+        Calculate Levenshtein distance between two strings
+        
+        Args:
+            s1: First string
+            s2: Second string
+            
+        Returns:
+            Edit distance
+        """
+        if len(s1) < len(s2):
+            return ModelExtractor._levenshtein_distance(s2, s1)
+        
+        if len(s2) == 0:
+            return len(s1)
+        
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                # Cost of insertions, deletions, or substitutions
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+        
+        return previous_row[-1]
+    
+    @classmethod
+    def get_base_model(cls, model: str) -> str:
+        """
+        Get base model without color suffix
+        
+        Args:
+            model: Full model code
+            
+        Returns:
+            Base model without color
+            
+        Examples:
+            >>> ModelExtractor.get_base_model("ECAM290.61.SB")
+            "ECAM29061"
+            >>> ModelExtractor.get_base_model("EC685.R")
+            "EC685"
+        """
+        if not model:
+            return ""
+        
+        normalized = cls.normalize_for_matching(model)
+        # Remove last 1-2 letters (color codes)
+        base = re.sub(r'[A-Z]{1,2}$', '', normalized)
+        return base if len(base) >= 4 else normalized
 
 
 # Convenience functions

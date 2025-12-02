@@ -88,7 +88,7 @@ class FullCycleRunner:
             {
                 'name': 'DIM_KAVA',
                 'path': self.base_dir / 'scrapers' / 'dimkava' / 'dimkava_bs4_scraper.py',
-                'expected': 41
+                'expected': 41  # Updated: was 72, now filtered to 41 valid products
             },
             {
                 'name': 'COFFEEHUB',
