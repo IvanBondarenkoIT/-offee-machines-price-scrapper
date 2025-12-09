@@ -164,46 +164,49 @@ class KontaktBS4Scraper:
                     logger.warning(f"Could not find price container for: {name[:50]}")
                     continue
                 
-                # Extract prices from strong > i or strong > b
-                # IMPORTANT: There can be multiple prices (regular + discount)
-                # We need to collect ALL prices and take the LAST one (final price)
-                all_prices = []
+                # Extract prices - KONTAKT specific structure
+                # <strong><i> = обычная/старая цена
+                # <strong><b> = цена со скидкой (ФИНАЛЬНАЯ!)
+                regular_price = None
+                discount_price = None
                 
                 strong_tags = price_container.find_all('strong')
+                
+                # Собираем <i> и <b> отдельно
+                i_prices = []
+                b_prices = []
+                
                 for strong in strong_tags:
-                    # Try i tag first
+                    # <i> tag = regular/old price
                     i_tag = strong.find('i')
                     if i_tag:
                         price_text = i_tag.get_text(strip=True)
                         if re.search(r'\d{2,}', price_text):
-                            all_prices.append(price_text)
+                            i_prices.append(price_text)
                     
-                    # Try b tag
+                    # <b> tag = discount/sale price (FINAL!)
                     b_tag = strong.find('b')
                     if b_tag:
                         price_text = b_tag.get_text(strip=True)
                         if re.search(r'\d{2,}', price_text):
-                            all_prices.append(price_text)
+                            b_prices.append(price_text)
                 
-                # Determine regular and discount prices
-                regular_price = None
-                discount_price = None
-                
-                if len(all_prices) >= 2:
-                    # Multiple prices = first is regular, last is discount (final)
-                    regular_price = self.clean_price(all_prices[0])
-                    discount_price = self.clean_price(all_prices[-1])
-                elif len(all_prices) == 1:
-                    # Single price = no discount
-                    regular_price = self.clean_price(all_prices[0])
+                # Если есть <b>, это финальная цена со скидкой
+                if b_prices:
+                    discount_price = self.clean_price(b_prices[0])
+                    # <i> это старая цена
+                    if i_prices:
+                        regular_price = self.clean_price(i_prices[0])
+                # Если только <i>, это обычная цена (без скидки)
+                elif i_prices:
+                    regular_price = self.clean_price(i_prices[0])
                     discount_price = None
                 
-                if regular_price:
+                if regular_price or discount_price:
                     delonghi_products.append({
                         'name': name,
                         'regular_price': regular_price,
                         'discount_price': discount_price,
-                        'all_prices_found': all_prices,  # For debugging
                     })
                 
             except Exception as e:

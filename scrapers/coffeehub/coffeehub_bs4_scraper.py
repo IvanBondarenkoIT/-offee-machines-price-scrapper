@@ -140,49 +140,48 @@ class CoffeeHubBS4Scraper:
                 if not name or ('delonghi' not in name.lower() and 'melitta' not in name.lower()):
                     continue
                 
-                # Look for prices
-                price_element = None
-                price_text = None
+                # Look for sale price and old price FIRST
+                # ВАЖНО: <ins> = финальная цена (со скидкой), <del> = старая цена
+                sale_price = None
+                old_price = None
+                final_price = None
                 
-                # Try different price selectors
-                price_selectors = [
-                    'span.price',
-                    'div.price',
-                    '.woocommerce-Price-amount',
-                    '.price',
-                    '[class*="price"]'
-                ]
+                # Шаг 1: Проверяем <ins> (цена со скидкой)
+                ins_element = product.find('ins')
+                if ins_element:
+                    ins_text = ins_element.get_text(strip=True)
+                    ins_match = re.search(r'([\d,]+\.?\d*)', ins_text.replace(',', ''))
+                    if ins_match:
+                        sale_price = float(ins_match.group(1))
+                        final_price = sale_price  # Это финальная цена!
+                        
+                        # Также получаем старую цену из <del>
+                        del_element = product.find(['del', 's'])
+                        if del_element:
+                            del_text = del_element.get_text(strip=True)
+                            del_match = re.search(r'([\d,]+\.?\d*)', del_text.replace(',', ''))
+                            if del_match:
+                                old_price = float(del_match.group(1))
                 
-                for selector in price_selectors:
-                    price_element = product.select_one(selector)
+                # Шаг 2: Если нет <ins>, берем обычную цену
+                if final_price is None:
+                    price_element = product.select_one('.price')
+                    if not price_element:
+                        # Try other selectors
+                        for selector in ['.woocommerce-Price-amount', '[class*="price"]']:
+                            price_element = product.select_one(selector)
+                            if price_element:
+                                break
+                    
                     if price_element:
                         price_text = price_element.get_text(strip=True)
-                        break
+                        price_match = re.search(r'([\d,]+\.?\d*)', price_text.replace(',', ''))
+                        if price_match:
+                            final_price = float(price_match.group(1))
                 
-                if not price_text:
-                    # Look for any text that contains currency symbol
-                    price_spans = product.find_all('span', string=re.compile(r'[₾$€£]'))
-                    if price_spans:
-                        price_text = price_spans[0].get_text(strip=True)
-                
-                if not price_text:
+                # Шаг 3: Если цена не найдена - пропускаем
+                if final_price is None:
                     continue
-                
-                # Extract price numbers
-                price_match = re.search(r'([\d,]+\.?\d*)', price_text.replace(',', ''))
-                if not price_match:
-                    continue
-                
-                price = float(price_match.group(1))
-                
-                # Look for discount price
-                discount_price = None
-                discount_element = product.find(['del', 's'], class_=lambda x: x and 'price' in x.lower())
-                if discount_element:
-                    discount_text = discount_element.get_text(strip=True)
-                    discount_match = re.search(r'([\d,]+\.?\d*)', discount_text.replace(',', ''))
-                    if discount_match:
-                        discount_price = float(discount_match.group(1))
                 
                 # Get product URL
                 product_url = None
@@ -194,8 +193,9 @@ class CoffeeHubBS4Scraper:
                 
                 product_data = {
                     'name': name,
-                    'price': price,
-                    'discount_price': discount_price,
+                    'price': final_price,  # Финальная цена (с учетом скидки)
+                    'old_price': old_price,  # Старая цена (если была)
+                    'sale_price': sale_price,  # Цена со скидкой (если есть)
                     'url': product_url,
                     'source': 'COFFEEHUB',
                     'scraped_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -204,7 +204,10 @@ class CoffeeHubBS4Scraper:
                 page_products.append(product_data)
                 # Clean name for logging (remove price info)
                 clean_name = name.split('₾')[0].strip() if '₾' in name else name
-                logger.info(f"Found DeLonghi product: {clean_name} - {price}")
+                if sale_price:
+                    logger.info(f"Found product: {clean_name} - {final_price} GEL (was {old_price} GEL)")
+                else:
+                    logger.info(f"Found product: {clean_name} - {final_price} GEL")
                 
             except Exception as e:
                 logger.warning(f"Error processing product: {e}")
@@ -233,7 +236,19 @@ class CoffeeHubBS4Scraper:
                     logger.error(f"Error scraping page {page_num} of URL {url_index}: {e}")
                     continue
         
-        logger.info(f"Total products scraped: {len(self.products)}")
+        logger.info(f"Total products scraped (with duplicates): {len(self.products)}")
+        
+        # Удаляем дубликаты
+        unique_products = []
+        seen = set()
+        for product in self.products:
+            key = (product['name'].lower().strip(), product['price'])
+            if key not in seen:
+                seen.add(key)
+                unique_products.append(product)
+        
+        self.products = unique_products
+        logger.info(f"Total unique products: {len(self.products)}")
     
     def save_results(self):
         """Save results to Excel and CSV"""

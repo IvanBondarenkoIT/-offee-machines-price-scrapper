@@ -60,12 +60,11 @@ DIMKAVA_CONFIG = {
 # COFFEEHUB Configuration
 COFFEEHUB_CONFIG = {
     "urls": [
-        "https://coffeehub.ge/shop/?s=Delonghi&post_type=product",  # DeLonghi filter
-        "https://coffeehub.ge/shop/?s=Melitta&post_type=product",  # Melitta filter
+        "https://coffeehub.ge/product-category/coffee-machines/",  # All coffee machines
     ],
-    "pages_per_url": 2,  # Pages to scrape for each URL
-    "expected_products": 50,  # Expected total (DeLonghi + Melitta)
-    "pagination_url": "&paged={page_num}",  # URL pattern for pagination
+    "pages_per_url": 13,  # Total pages (151 products / 12 per page ≈ 13 pages)
+    "expected_products": 50,  # Expected DeLonghi + Melitta (will filter from 151 total)
+    "pagination_url": "page/{page_num}/",  # URL pattern: .../page/2/
 }
 
 # COFFEEPIN Configuration
