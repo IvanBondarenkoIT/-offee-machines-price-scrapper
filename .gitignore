@@ -7,25 +7,29 @@ __pycache__/
 venv/
 env/
 ENV/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# Virtual Environment
-venv/
-ENV/
+# Selenium
+chromedriver.exe
+geckodriver.exe
+
+# Data files
+data/output/
+!data/output/.gitkeep
+data/inbox/*.xlsx
+data/inbox/*.xls
+
+# Logs
+logs/*.log
+*.log
+
+# Reports
+*.docx
+*.pdf
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
 
 # IDE
 .vscode/
@@ -34,64 +38,25 @@ ENV/
 *.swo
 *~
 
-# Excel temp files
-~$*.xlsx
-~$*.xls
+# Archived folders
+web_app/
+web_app_ARCHIVE.zip
+portable_build/
+portable_build_ARCHIVE.zip
+web_uploader/
+web_uploader_ARCHIVE.zip
 
-# Data directories
-data/inbox/
-# data/output/ - TEMPORARILY ALLOW for Railway deployment
-# data/output/
+# Temporary files
+*.tmp
+*.bak
+*.html
+agent-tools/
+cleanup_old_files.py
 
-# Combined Excel files
-combined_prices_*.xlsx
+# Portable build
+portable_build/build/
+portable_build/dist/
 
-# Results
-results/*.xlsx
-results/*.csv
-
-# Logs
-logs/
-*.log
-!logs/README.md
-
-# Debug files (temporary debugging scripts)
-debug_*.py
-debug_*.html
-check_*.py
-show_*.py
-test_kontakt*.py
-test_alta*.py
-analyze_kontakt*.py
-
-# Geckodriver/Chrome driver
-geckodriver.log
-chromedriver.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Env files
-.env
-.env.local
-!.env.example
-
-# Railway
-.railway/
-railway-runtime.txt
-
-# Docker
-.dockerignore.swp
-
-# Metadata files (generated at runtime)
-data/inbox/inventory_metadata.json
-
-# Output directory
-/data/output/
-
-# Local config files with secrets
-web_uploader/config.ini
+# Upload tools
 upload_data.py
-.env.local
-*.local.ini
+web_uploader/
