@@ -202,7 +202,8 @@ class KontaktBS4Scraper:
                     regular_price = self.clean_price(i_prices[0])
                     discount_price = None
                 
-                if regular_price or discount_price:
+                # IMPORTANT: Must have at least regular_price to avoid errors later
+                if regular_price:
                     delonghi_products.append({
                         'name': name,
                         'regular_price': regular_price,
@@ -219,7 +220,9 @@ class KontaktBS4Scraper:
         for idx, prod_data in enumerate(delonghi_products, 1):
             regular = prod_data['regular_price']
             discount = prod_data['discount_price']
-            has_discount = discount is not None and discount > 0 and discount < regular
+            # Check has_discount: need both prices and discount < regular
+            has_discount = (regular is not None and discount is not None and 
+                           discount > 0 and discount < regular)
             final = discount if has_discount else regular
             
             product = {
