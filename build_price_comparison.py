@@ -204,10 +204,22 @@ class PriceComparisonBuilder:
                         has_discount = row.get('has_discount', False)
                     elif 'price' in row:
                         # CoffeeHub format
+                        # price = final price (e.g. 2259)
+                        # old_price = original price if discounted (e.g. 3359)
+                        # sale_price = same as price
                         price = row['price']
-                        regular_price = row.get('price') if not pd.isna(row.get('price')) else None
-                        discount_price = row.get('discount_price') if not pd.isna(row.get('discount_price')) else None
-                        has_discount = discount_price is not None and discount_price != price
+                        old_price = row.get('old_price')
+                        
+                        if pd.notna(old_price) and old_price != price:
+                            # Has discount
+                            regular_price = old_price
+                            discount_price = price
+                            has_discount = True
+                        else:
+                            # No discount
+                            regular_price = price
+                            discount_price = None
+                            has_discount = False
                     else:
                         # Fallback
                         price = row.get('price', 0)
