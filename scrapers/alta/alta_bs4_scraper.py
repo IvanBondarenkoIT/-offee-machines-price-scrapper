@@ -71,14 +71,11 @@ class AltaBS4Scraper:
         attempts = 0
         
         while attempts < max_attempts:
-            # Count current products
+            # Count current products by h2 tags (more reliable than XPath)
             try:
-                product_elements = self.driver.find_elements(
-                    By.XPATH, 
-                    "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[3]/div"
-                )
+                product_elements = self.driver.find_elements(By.TAG_NAME, "h2")
                 product_count = len(product_elements)
-                logger.info(f"Current product count: {product_count}")
+                logger.info(f"Current product count (h2 tags): {product_count}")
                 
                 if product_count >= ALTA_CONFIG["expected_products"]:
                     logger.info(f"All {product_count} products loaded!")
@@ -91,7 +88,7 @@ class AltaBS4Scraper:
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(0.5)
                 
-                button_xpath = "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[4]/button"
+                button_xpath = ALTA_CONFIG["load_more_button_xpath"]
                 button = WebDriverWait(self.driver, 5).until(
                     EC.presence_of_element_located((By.XPATH, button_xpath))
                 )

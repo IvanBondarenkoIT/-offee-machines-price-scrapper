@@ -17,7 +17,7 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 ALTA_CONFIG = {
     "url": "https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s",
     "excel_file": INPUT_DIR / "Parsing alta.xlsx",
-    "load_more_button_xpath": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[4]/button",
+    "load_more_button_xpath": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[3]/button",  # Fixed: div[3] not div[4]
     "expected_products": 74,
     "product_container_base": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[3]/div[{index}]",
 }
