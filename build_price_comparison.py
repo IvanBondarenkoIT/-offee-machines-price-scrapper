@@ -7,11 +7,35 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+import math
 from utils.model_extractor import ModelExtractor
 from utils.inventory_parser import InventoryParser
 from utils.enhanced_matcher import EnhancedMatcher
 from utils.stock_api_client import StockApiClient
 from config import STOCK_API_CONFIG
+
+
+def round_price(price: float) -> float:
+    """
+    Round price intelligently:
+    - 799.99 → 800.00
+    - 799.98 → 800.00
+    - 799.50 → 800.00
+    - 799.49 → 799.00
+    - Keep 2 decimal places
+    """
+    if pd.isna(price) or price is None:
+        return price
+    
+    # Round to nearest integer if very close (e.g., 799.99 → 800)
+    decimal_part = price - math.floor(price)
+    if decimal_part >= 0.95:  # .95, .96, .97, .98, .99 → round up
+        return round(math.ceil(price), 2)
+    elif decimal_part <= 0.05:  # .00, .01, .02, .03, .04, .05 → round down
+        return round(math.floor(price), 2)
+    else:
+        # Keep original with 2 decimals
+        return round(price, 2)
 
 class PriceComparisonBuilder:
     """Build price comparison table"""
@@ -382,16 +406,21 @@ class PriceComparisonBuilder:
                 if source in competitor_products:
                     p = competitor_products[source]
                     if p['has_discount'] and p['regular_price'] and p['discount_price']:
-                        row[source] = f"{p['regular_price']:.2f} \\ {p['discount_price']:.2f}"
+                        # Round prices before formatting
+                        regular = round_price(p['regular_price'])
+                        discount = round_price(p['discount_price'])
+                        row[source] = f"{regular:.2f} \\ {discount:.2f}"
                     else:
                         # Use regular_price if available and valid, otherwise price
                         regular_price = p.get('regular_price')
                         price = p.get('price')
                         
                         if regular_price and not pd.isna(regular_price):
-                            row[source] = f"{regular_price:.2f}"
+                            rounded = round_price(regular_price)
+                            row[source] = f"{rounded:.2f}"
                         elif price and not pd.isna(price):
-                            row[source] = f"{price:.2f}"
+                            rounded = round_price(price)
+                            row[source] = f"{rounded:.2f}"
                         else:
                             row[source] = '-'
                 else:
