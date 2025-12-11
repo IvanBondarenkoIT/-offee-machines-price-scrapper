@@ -216,3 +216,4 @@ python scrapers/alta/alta_bs4_scraper.py
 
 *Анализ выполнен: 9 декабря 2025, 13:20*
 
+

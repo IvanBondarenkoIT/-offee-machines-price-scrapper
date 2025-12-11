@@ -91,3 +91,4 @@ data/output/price_comparison_YYYYMMDD_HHMMSS.xlsx
 
 **Статус: Готово к продакшену** 🎉
 
+
