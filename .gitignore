@@ -61,6 +61,5 @@ cleanup_old_files.py
 portable_build/build/
 portable_build/dist/
 
-# Upload tools
-upload_data.py
+# Upload tools (archived)
 web_uploader/
