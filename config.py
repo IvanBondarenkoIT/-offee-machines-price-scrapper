@@ -1,6 +1,10 @@
-# Configuration for Alta Price Scraper
+# Configuration for Coffee Machines Price Scraper
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Base directories
 BASE_DIR = Path(__file__).parent
@@ -12,6 +16,36 @@ LOGS_DIR = BASE_DIR / "logs"
 # Ensure directories exist
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+# ========================================
+# STOCK API CONFIGURATION
+# ========================================
+STOCK_API_CONFIG = {
+    # Enable/disable API (reads from .env: USE_STOCK_API)
+    "enabled": os.getenv("USE_STOCK_API", "false").lower() == "true",
+    
+    # API endpoint URL
+    "api_url": os.getenv("STOCK_API_URL", ""),
+    
+    # API tokens (primary and fallback)
+    "api_token": os.getenv("STOCK_API_TOKEN", ""),
+    "fallback_token": os.getenv("STOCK_API_FALLBACK_TOKEN", ""),
+    
+    # Timeout and retry settings
+    "timeout": int(os.getenv("STOCK_API_TIMEOUT", "30")),
+    "retry_attempts": 3,
+    "retry_delay": 2,
+    
+    # Fallback to Excel if API fails
+    "fallback_to_excel": os.getenv("STOCK_API_FALLBACK_TO_EXCEL", "true").lower() == "true",
+}
+
+# Validate API config if enabled
+if STOCK_API_CONFIG["enabled"]:
+    if not STOCK_API_CONFIG["api_url"]:
+        print("[WARNING] USE_STOCK_API=true but STOCK_API_URL is not set in .env")
+        print("          Will fall back to Excel file.")
+        STOCK_API_CONFIG["enabled"] = False
 
 # ALTA Configuration
 ALTA_CONFIG = {

@@ -10,6 +10,8 @@ from typing import Dict, List, Optional, Tuple
 from utils.model_extractor import ModelExtractor
 from utils.inventory_parser import InventoryParser
 from utils.enhanced_matcher import EnhancedMatcher
+from utils.stock_api_client import StockApiClient
+from config import STOCK_API_CONFIG
 
 class PriceComparisonBuilder:
     """Build price comparison table"""
@@ -27,12 +29,72 @@ class PriceComparisonBuilder:
         self.model_map = {}
     
     def load_inventory(self) -> pd.DataFrame:
-        """Load inventory from остатки.xls using InventoryParser"""
-        print("\n[1/6] Loading INVENTORY (using InventoryParser)...")
+        """Load inventory from API or Excel file (with fallback)"""
+        print("\n[1/6] Loading INVENTORY...")
+        
+        # Check if API is enabled
+        if STOCK_API_CONFIG.get("enabled", False):
+            print("  Mode: API (with Excel fallback)")
+            try:
+                # Try loading from API
+                df_result = self._load_inventory_from_api()
+                if df_result is not None and len(df_result) > 0:
+                    return df_result
+                else:
+                    print("[WARNING] API returned no data")
+                    if STOCK_API_CONFIG.get("fallback_to_excel", True):
+                        print("[FALLBACK] Switching to Excel file...")
+                        return self._load_inventory_from_excel()
+                    else:
+                        print("[ERROR] API failed and fallback disabled")
+                        return pd.DataFrame()
+                    
+            except Exception as e:
+                print(f"[ERROR] Failed to load from API: {e}")
+                if STOCK_API_CONFIG.get("fallback_to_excel", True):
+                    print("[FALLBACK] Switching to Excel file...")
+                    return self._load_inventory_from_excel()
+                else:
+                    print("[ERROR] API failed and fallback disabled")
+                    raise
+        else:
+            print("  Mode: Excel file (API disabled)")
+            return self._load_inventory_from_excel()
+    
+    def _load_inventory_from_api(self) -> pd.DataFrame:
+        """Load inventory from API"""
+        print("  [API] Connecting to server...")
+        
+        # Create API client
+        client = StockApiClient(
+            api_url=STOCK_API_CONFIG["api_url"],
+            api_token=STOCK_API_CONFIG.get("api_token"),
+            fallback_token=STOCK_API_CONFIG.get("fallback_token"),
+            timeout=STOCK_API_CONFIG.get("timeout", 30),
+            retry_attempts=STOCK_API_CONFIG.get("retry_attempts", 3),
+            retry_delay=STOCK_API_CONFIG.get("retry_delay", 2)
+        )
+        
+        # Get data
+        df_result = client.get_stock_data()
+        
+        # Validate
+        if df_result is None or len(df_result) == 0:
+            print("  [API] No valid products returned")
+            return pd.DataFrame()
+        
+        print(f"  [API] [OK] Loaded {len(df_result)} valid products")
+        print(f"        Brands: {df_result['brand'].value_counts().to_dict()}")
+        
+        return df_result
+    
+    def _load_inventory_from_excel(self) -> pd.DataFrame:
+        """Load inventory from Excel file (original logic)"""
+        print("  [EXCEL] Reading file...")
         
         file_path = self.inbox_dir / 'остатки.xls'
         if not file_path.exists():
-            print("[WARNING] Inventory file not found")
+            print("  [EXCEL] File not found")
             return pd.DataFrame()
         
         try:
@@ -53,15 +115,15 @@ class PriceComparisonBuilder:
             })
             df_result['source'] = 'INVENTORY'
             
-            print(f"[OK] Loaded {len(df_result)} valid products from INVENTORY")
-            print(f"     (Total parsed: {len(df_all)}, Valid: {len(df_valid)})")
-            print(f"     Brands: {df_result['brand'].value_counts().to_dict()}")
+            print(f"  [EXCEL] [OK] Loaded {len(df_result)} valid products")
+            print(f"          (Total parsed: {len(df_all)}, Valid: {len(df_valid)})")
+            print(f"          Brands: {df_result['brand'].value_counts().to_dict()}")
             
             return df_result
             
         except Exception as e:
-            print(f"[ERROR] Failed to parse inventory: {e}")
-            print("[FALLBACK] Using old parsing method...")
+            print(f"  [EXCEL] ERROR parsing with InventoryParser: {e}")
+            print("  [EXCEL] Trying legacy parsing method...")
             
             # Fallback to old method if new parser fails
             df = pd.read_excel(file_path, header=None)
@@ -100,7 +162,7 @@ class PriceComparisonBuilder:
                     pass
             
             df_result = pd.DataFrame(products)
-            print(f"[OK] Loaded {len(df_result)} products from INVENTORY (fallback method)")
+            print(f"  [EXCEL] [OK] Loaded {len(df_result)} products (legacy method)")
             return df_result
     
     def load_scraped_data(self) -> Dict[str, pd.DataFrame]:

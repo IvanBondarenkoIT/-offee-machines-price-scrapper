@@ -62,12 +62,36 @@ data/output/price_comparison_YYYYMMDD_HHMMSS.xlsx
 
 ---
 
+## 🔌 Источник данных об остатках
+
+### По умолчанию: API
+Проект использует **Stock API** для получения актуальных данных об остатках с сервера в реальном времени.
+
+**Преимущества:**
+- ✅ Всегда свежие данные
+- ✅ Автоматическая синхронизация с БД
+- ✅ Не нужно обновлять Excel файлы вручную
+
+### Резервный вариант: Excel файл
+Если API недоступен, автоматически используется файл `data/inbox/остатки.xls`
+
+### Настройка (`.env`):
+```bash
+USE_STOCK_API=true                    # Включить/выключить API
+STOCK_API_URL=http://your-server.com
+STOCK_API_TOKEN=your_token_here
+STOCK_API_FALLBACK_TO_EXCEL=true     # Fallback на Excel
+```
+
+---
+
 ## 🔧 Технические детали
 
 - **Python 3.11+**
 - **Selenium + BeautifulSoup** для парсинга
 - **Pandas** для Excel
 - **Chrome WebDriver** (автоматически устанавливается)
+- **Stock API** для получения остатков (с fallback)
 
 ---
 
