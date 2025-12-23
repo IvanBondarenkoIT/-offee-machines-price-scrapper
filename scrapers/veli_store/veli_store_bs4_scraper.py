@@ -26,6 +26,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
 from config import VELI_STORE_CONFIG, SELENIUM_CONFIG
+from utils.model_extractor import ModelExtractor
 
 # Setup logging
 logging.basicConfig(
@@ -39,10 +40,19 @@ logging.basicConfig(
 logger = logging.getLogger('veli_store_scraper')
 
 class VeliStoreScraper:
-    def __init__(self):
+    def __init__(self, enable_google_search=False, inventory_models=None):
+        """
+        Initialize Veli Store scraper
+        Args:
+            enable_google_search: If True, search missing products via Google (DEFAULT: False)
+            inventory_models: List of model codes from inventory to search for
+        """
         self.config = VELI_STORE_CONFIG
         self.driver = None
         self.products = []
+        self.enable_google_search = enable_google_search
+        self.inventory_models = inventory_models or []
+        self.model_extractor = ModelExtractor()
         
     def setup_driver(self):
         """Setup Chrome driver with options"""
@@ -278,7 +288,16 @@ class VeliStoreScraper:
                 if page_num < self.config['pages_per_url']:
                     time.sleep(2)
         
-        logger.info(f"Total products scraped: {len(self.products)}")
+        logger.info(f"Total products scraped from categories: {len(self.products)}")
+        
+        # Search for missing products via Google if enabled
+        if self.enable_google_search and self.inventory_models:
+            missing_products = self.search_missing_products()
+            if missing_products:
+                self.products.extend(missing_products)
+                logger.info(f"Added {len(missing_products)} products via Google search")
+        
+        logger.info(f"Total products (with Google search): {len(self.products)}")
         return self.products
     
     def save_to_excel(self, products):
@@ -304,6 +323,191 @@ class VeliStoreScraper:
         logger.info(f"[OK] Saved to CSV: {csv_filepath}")
         
         return filepath
+    
+    def extract_model_from_name(self, name):
+        """
+        Extract model code from product name using existing ModelExtractor
+        Examples:
+            "DeLonghi ECAM22.110.SB Magnifica" -> "ECAM22.110.SB"
+            "DeLonghi CTJ2103.BK Toaster" -> "CTJ2103.BK"
+        """
+        model = self.model_extractor.extract_model(name)
+        return model if model else None
+    
+    def search_missing_products(self):
+        """
+        Search for products that were not found in categories via Google Search
+        Returns: List of additional products
+        """
+        logger.info("=" * 60)
+        logger.info("SEARCHING FOR MISSING PRODUCTS VIA GOOGLE")
+        logger.info("=" * 60)
+        
+        # Extract models from already found products
+        found_models = set()
+        for product in self.products:
+            model = self.extract_model_from_name(product['name'])
+            if model:
+                found_models.add(model)
+        
+        logger.info(f"Already found models from category: {len(found_models)}")
+        if found_models:
+            logger.info(f"  Models: {sorted(found_models)}")
+        logger.info(f"Inventory models to check: {len(self.inventory_models)}")
+        
+        # Normalize inventory models (uppercase, remove spaces)
+        inventory_models_normalized = {m.upper().replace(' ', '') for m in self.inventory_models}
+        
+        # Find missing models (EXCLUDE already found from category!)
+        missing_models = inventory_models_normalized - found_models
+        
+        if not missing_models:
+            logger.info("✓ No missing products - all inventory items found in categories!")
+            logger.info("  Skipping Google search - not needed!")
+            return []
+        
+        logger.info(f"✗ Missing {len(missing_models)} models (NOT found in category):")
+        logger.info(f"  {sorted(missing_models)}")
+        logger.info(f"  → Will search these via Google...")
+        
+        # Limit to avoid too many Google searches (can be adjusted)
+        max_searches = 20
+        if len(missing_models) > max_searches:
+            logger.warning(f"Limiting Google search to {max_searches} products (out of {len(missing_models)})")
+            missing_models = list(missing_models)[:max_searches]
+        
+        # Search via Google
+        found_products = []
+        for i, model in enumerate(sorted(missing_models), 1):
+            logger.info(f"[{i}/{len(missing_models)}] Searching via Google: {model}")
+            
+            try:
+                # Search on Google
+                url = self.google_search_product(model)
+                
+                if url:
+                    # Parse product page
+                    product = self.parse_product_page(url)
+                    if product:
+                        found_products.append(product)
+                        logger.info(f"  -> Found: {product['name']} - {product['price']} GEL")
+                    
+                    # Pause between products
+                    time.sleep(3)
+                else:
+                    logger.info(f"  -> Not found on Veli Store")
+                
+                # Pause between Google searches (important to avoid blocking!)
+                time.sleep(2)
+                
+            except Exception as e:
+                logger.error(f"  -> Error searching {model}: {e}")
+                continue
+        
+        logger.info(f"Found {len(found_products)} missing products via Google")
+        return found_products
+    
+    def google_search_product(self, model_code):
+        """
+        Search for a product on Veli Store via Google
+        Returns: URL of the product page or None
+        """
+        query = f"site:veli.store {model_code}"
+        google_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+        
+        try:
+            self.driver.get(google_url)
+            time.sleep(2)
+            
+            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+            results = soup.find_all('a', href=True)
+            
+            for result in results:
+                href = result['href']
+                # Google wraps URLs
+                if '/url?q=' in href and 'veli.store' in href:
+                    url = href.split('/url?q=')[1].split('&')[0]
+                    if '/details/' in url or '/product/' in url:
+                        return url
+                
+                # Direct links (newer Google)
+                if href.startswith('https://veli.store') and ('/details/' in href or '/product/' in href):
+                    return href
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Google search error: {e}")
+            return None
+    
+    def parse_product_page(self, url):
+        """
+        Parse a Veli Store product page
+        Returns: dict with product info
+        """
+        try:
+            self.driver.get(url)
+            time.sleep(3)
+            
+            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+            
+            # Extract name
+            name_elem = soup.find('h1')
+            name = name_elem.get_text(strip=True) if name_elem else "Unknown"
+            
+            # Clean Georgian text
+            georgian_pattern = r'[ა-ჰ\s]+'
+            name = re.sub(georgian_pattern, '', name)
+            name = re.sub(r'\s+', ' ', name).strip()
+            
+            # Extract prices
+            price_section = soup.find('section')
+            if not price_section:
+                return None
+            
+            price_texts = price_section.find_all(string=re.compile(r'\d+\.\d+\s*₾'))
+            
+            prices = []
+            for text in price_texts:
+                match = re.search(r'(\d+\.?\d*)', text)
+                if match:
+                    try:
+                        price = float(match.group(1))
+                        if 10 < price < 10000:
+                            prices.append(price)
+                    except ValueError:
+                        pass
+            
+            prices = sorted(list(set(prices)))
+            
+            if not prices:
+                return None
+            
+            # Determine discount
+            if len(prices) >= 2:
+                discount_price = min(prices)
+                regular_price = max(prices)
+                has_discount = True
+            else:
+                regular_price = prices[0]
+                discount_price = None
+                has_discount = False
+            
+            final_price = discount_price if discount_price else regular_price
+            
+            return {
+                'name': name,
+                'price': final_price,
+                'regular_price': regular_price,
+                'discount_price': discount_price,
+                'has_discount': has_discount,
+                'url': url,
+                'source': 'VELI_STORE'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error parsing product page: {e}")
+            return None
     
     def run(self):
         """Main execution method"""
