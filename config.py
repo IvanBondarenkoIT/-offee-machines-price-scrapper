@@ -120,7 +120,7 @@ VELI_STORE_CONFIG = {
         "https://veli.store/en/category/electronics/kitchen-appliances/for-tea-coffee/coffee-makers-pots/1332/?page_size=40",
     ],
     "pages_per_url": 1,  # Only 1 page needed (page_size=40 shows all products)
-    "expected_products": 12,  # DeLonghi + Melitta (filters out Bosch, Ariete, KRUPS)
+    "expected_products": 16,  # 12 from category + 4 from direct URLs (config/veli_direct_urls.json)
     "pagination_url": "?page={page_num}",  # URL pattern for pagination (if needed)
 }
 

@@ -103,7 +103,7 @@ class FullCycleRunner:
             {
                 'name': 'VELI_STORE',
                 'path': self.base_dir / 'scrapers' / 'veli_store' / 'veli_store_bs4_scraper.py',
-                'expected': 40
+                'expected': 16  # 12 from category + 4 from direct URLs
             },
             {
                 'name': 'VEGA_GE',

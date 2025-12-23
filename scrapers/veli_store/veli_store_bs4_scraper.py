@@ -675,6 +675,27 @@ class VeliStoreScraper:
 def main():
     scraper = VeliStoreScraper()
     scraper.run()
+    
+    # Print summary for integration with run_full_cycle.py
+    if scraper.products:
+        # Count products from direct URLs
+        direct_count = 0
+        if scraper.use_direct_urls and scraper.direct_urls:
+            for product in scraper.products:
+                for info in scraper.direct_urls.values():
+                    # Check if URL matches (ignore query params)
+                    direct_url_base = info['url'].split('?')[0]
+                    product_url_base = product['url'].split('?')[0]
+                    if product_url_base.startswith(direct_url_base):
+                        direct_count += 1
+                        break
+        
+        category_count = len(scraper.products) - direct_count
+        
+        print(f"\n[SUCCESS] {len(scraper.products)} products scraped successfully")
+        print(f"  - From category: {category_count}")
+        if direct_count > 0:
+            print(f"  - From direct URLs: {direct_count}")
 
 if __name__ == "__main__":
     main()
