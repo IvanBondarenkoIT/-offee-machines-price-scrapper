@@ -571,9 +571,10 @@ class VeliStoreScraper:
             
             name = name_elem.get_text(strip=True)
             
-            # Clean Georgian text
-            georgian_pattern = r'[ა-ჰ\s]+'
+            # Clean Georgian text (but keep spaces!)
+            georgian_pattern = r'[ა-ჰ]+'  # Only Georgian chars, NOT spaces
             name = re.sub(georgian_pattern, '', name)
+            # Normalize spaces (collapse multiple spaces into one)
             name = re.sub(r'\s+', ' ', name).strip()
             
             # Extract prices - improved method
