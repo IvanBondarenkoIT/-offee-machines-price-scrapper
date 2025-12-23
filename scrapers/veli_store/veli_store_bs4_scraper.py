@@ -19,6 +19,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from urllib.parse import unquote
 from bs4 import BeautifulSoup
 
 # Add project root to path
@@ -40,19 +41,41 @@ logging.basicConfig(
 logger = logging.getLogger('veli_store_scraper')
 
 class VeliStoreScraper:
-    def __init__(self, enable_google_search=False, inventory_models=None):
+    def __init__(self, enable_google_search=False, inventory_models=None, use_direct_urls=True):
         """
         Initialize Veli Store scraper
         Args:
             enable_google_search: If True, search missing products via Google (DEFAULT: False)
             inventory_models: List of model codes from inventory to search for
+            use_direct_urls: If True, use direct URLs from config file (DEFAULT: True)
         """
         self.config = VELI_STORE_CONFIG
         self.driver = None
         self.products = []
         self.enable_google_search = enable_google_search
         self.inventory_models = inventory_models or []
+        self.use_direct_urls = use_direct_urls
         self.model_extractor = ModelExtractor()
+        self.direct_urls = self.load_direct_urls()
+    
+    def load_direct_urls(self):
+        """Load direct URLs from config file"""
+        import json
+        config_file = project_root / "config" / "veli_direct_urls.json"
+        
+        if not config_file.exists():
+            logger.debug("No direct URLs config file found")
+            return {}
+        
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            urls = data.get('products', {})
+            logger.info(f"Loaded {len(urls)} direct URLs from config")
+            return urls
+        except Exception as e:
+            logger.warning(f"Failed to load direct URLs: {e}")
+            return {}
         
     def setup_driver(self):
         """Setup Chrome driver with options"""
@@ -62,7 +85,12 @@ class VeliStoreScraper:
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
-        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+        # More realistic user agent (Chrome 120)
+        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        # Additional options to avoid detection
+        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
         
         try:
             self.driver = webdriver.Chrome(options=chrome_options)
@@ -290,14 +318,21 @@ class VeliStoreScraper:
         
         logger.info(f"Total products scraped from categories: {len(self.products)}")
         
-        # Search for missing products via Google if enabled
+        # Try to add products from direct URLs if enabled
+        if self.use_direct_urls and self.direct_urls:
+            direct_products = self.scrape_direct_urls()
+            if direct_products:
+                self.products.extend(direct_products)
+                logger.info(f"Added {len(direct_products)} products via direct URLs")
+        
+        # Search for missing products via Google if enabled (fallback)
         if self.enable_google_search and self.inventory_models:
             missing_products = self.search_missing_products()
             if missing_products:
                 self.products.extend(missing_products)
                 logger.info(f"Added {len(missing_products)} products via Google search")
         
-        logger.info(f"Total products (with Google search): {len(self.products)}")
+        logger.info(f"Total products: {len(self.products)}")
         return self.products
     
     def save_to_excel(self, products):
@@ -323,6 +358,48 @@ class VeliStoreScraper:
         logger.info(f"[OK] Saved to CSV: {csv_filepath}")
         
         return filepath
+    
+    def scrape_direct_urls(self):
+        """
+        Scrape products from direct URLs (for products not in categories)
+        Returns: List of products
+        """
+        if not self.direct_urls:
+            return []
+        
+        logger.info("=" * 60)
+        logger.info("SCRAPING PRODUCTS FROM DIRECT URLs")
+        logger.info("=" * 60)
+        logger.info(f"Found {len(self.direct_urls)} direct URLs in config")
+        
+        # Check which models we already have
+        found_models = set()
+        for product in self.products:
+            model = self.extract_model_from_name(product['name'])
+            if model:
+                found_models.add(model.upper())
+        
+        products = []
+        for model_code, info in self.direct_urls.items():
+            # Check if already found in category
+            if model_code.upper() in found_models:
+                logger.info(f"[SKIP] {model_code} - already found in category")
+                continue
+            
+            url = info['url']
+            logger.info(f"[{len(products)+1}/{len(self.direct_urls)}] Scraping: {model_code}")
+            
+            product = self.parse_product_page(url)
+            if product:
+                products.append(product)
+                logger.info(f"  -> {product['name']} - {product['price']} GEL")
+            else:
+                logger.warning(f"  -> Failed to parse {model_code}")
+            
+            time.sleep(2)  # Pause between products
+        
+        logger.info(f"Successfully scraped {len(products)} products from direct URLs")
+        return products
     
     def extract_model_from_name(self, name):
         """
@@ -409,81 +486,141 @@ class VeliStoreScraper:
     
     def google_search_product(self, model_code):
         """
-        Search for a product on Veli Store via Google
+        Search for a product on Veli Store via DuckDuckGo (more reliable than Google)
         Returns: URL of the product page or None
         """
-        query = f"site:veli.store {model_code}"
-        google_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+        # Try multiple search variations
+        search_queries = [
+            f"site:veli.store {model_code}",
+            f"veli.store {model_code}",
+            f"veli.store delonghi {model_code}",
+        ]
         
-        try:
-            self.driver.get(google_url)
-            time.sleep(2)
-            
-            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-            results = soup.find_all('a', href=True)
-            
-            for result in results:
-                href = result['href']
-                # Google wraps URLs
-                if '/url?q=' in href and 'veli.store' in href:
-                    url = href.split('/url?q=')[1].split('&')[0]
-                    if '/details/' in url or '/product/' in url:
+        for query in search_queries:
+            try:
+                # Use DuckDuckGo (no CAPTCHA, simpler structure)
+                search_url = f"https://duckduckgo.com/?q={query.replace(' ', '+')}"
+                logger.debug(f"  Trying: {query}")
+                
+                self.driver.get(search_url)
+                time.sleep(3)  # Wait for DuckDuckGo results
+                
+                # Parse with BeautifulSoup
+                soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+                
+                # Method 1: Direct links (DuckDuckGo uses direct links, not redirects!)
+                for link in soup.find_all('a', href=True):
+                    href = link['href']
+                    
+                    # DuckDuckGo direct links to veli.store
+                    if 'veli.store' in href and ('/details/' in href or '/product/' in href):
+                        # Clean URL (remove DuckDuckGo tracking params if any)
+                        if 'uddg=' in href:
+                            href = href.split('uddg=')[1]
+                        url = unquote(href)
+                        logger.info(f"  Found: {url}")
                         return url
                 
-                # Direct links (newer Google)
-                if href.startswith('https://veli.store') and ('/details/' in href or '/product/' in href):
-                    return href
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Google search error: {e}")
-            return None
+                # Method 2: Look in Selenium elements
+                try:
+                    elements = self.driver.find_elements(By.TAG_NAME, 'a')
+                    for elem in elements:
+                        try:
+                            href = elem.get_attribute('href')
+                            if href and 'veli.store' in href and ('/details/' in href or '/product/' in href):
+                                logger.info(f"  Found via Selenium: {href}")
+                                return href
+                        except:
+                            continue
+                except:
+                    pass
+                
+                # Method 3: Regex search in page text
+                page_text = soup.get_text()
+                if 'veli.store' in page_text:
+                    import re
+                    urls = re.findall(r'https?://veli\.store/(?:details|product)/[^\s<>"\']+', page_text)
+                    if urls:
+                        logger.info(f"  Found via regex: {urls[0]}")
+                        return urls[0]
+                
+            except Exception as e:
+                logger.debug(f"Search query '{query}' failed: {e}")
+                continue
+        
+        # Not found with any query
+        return None
     
     def parse_product_page(self, url):
         """
-        Parse a Veli Store product page
+        Parse a Veli Store product page (improved for direct URLs)
         Returns: dict with product info
         """
         try:
+            logger.debug(f"Parsing: {url}")
             self.driver.get(url)
             time.sleep(3)
             
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             
-            # Extract name
+            # Extract name (h1 tag)
             name_elem = soup.find('h1')
-            name = name_elem.get_text(strip=True) if name_elem else "Unknown"
+            if not name_elem:
+                logger.error("Could not find product name (h1)")
+                return None
+            
+            name = name_elem.get_text(strip=True)
             
             # Clean Georgian text
             georgian_pattern = r'[ა-ჰ\s]+'
             name = re.sub(georgian_pattern, '', name)
             name = re.sub(r'\s+', ' ', name).strip()
             
-            # Extract prices
-            price_section = soup.find('section')
-            if not price_section:
-                return None
-            
-            price_texts = price_section.find_all(string=re.compile(r'\d+\.\d+\s*₾'))
-            
+            # Extract prices - improved method
             prices = []
-            for text in price_texts:
-                match = re.search(r'(\d+\.?\d*)', text)
-                if match:
-                    try:
-                        price = float(match.group(1))
-                        if 10 < price < 10000:
-                            prices.append(price)
-                    except ValueError:
-                        pass
             
+            # Method 1: Look for h3 tags with prices (main price display)
+            h3_tags = soup.find_all('h3')
+            for h3 in h3_tags:
+                text = h3.get_text()
+                if '₾' in text:
+                    # Extract all numbers that look like prices
+                    price_matches = re.findall(r'(\d+\.?\d*)\s*₾', text)
+                    for match in price_matches:
+                        try:
+                            price = float(match)
+                            if 10 < price < 10000:
+                                prices.append(price)
+                        except:
+                            pass
+            
+            # Method 2: Look in all elements with ₾ symbol
+            if not prices:
+                all_text_with_currency = soup.find_all(string=re.compile(r'\d+\.?\d*\s*₾'))
+                for text in all_text_with_currency:
+                    matches = re.findall(r'(\d+\.?\d*)\s*₾', str(text))
+                    for match in matches:
+                        try:
+                            price = float(match)
+                            if 10 < price < 10000:
+                                prices.append(price)
+                        except:
+                            pass
+            
+            # Remove duplicates and sort
             prices = sorted(list(set(prices)))
             
             if not prices:
+                logger.error(f"No prices found on page: {url}")
+                # Save HTML for debugging
+                with open("debug_veli_page.html", "w", encoding="utf-8") as f:
+                    f.write(soup.prettify())
+                logger.info("Saved HTML to debug_veli_page.html for inspection")
                 return None
             
-            # Determine discount
+            logger.debug(f"Found prices: {prices}")
+            
+            # Determine discount (if multiple prices, highest is old, lowest is current)
             if len(prices) >= 2:
                 discount_price = min(prices)
                 regular_price = max(prices)
@@ -495,7 +632,7 @@ class VeliStoreScraper:
             
             final_price = discount_price if discount_price else regular_price
             
-            return {
+            product = {
                 'name': name,
                 'price': final_price,
                 'regular_price': regular_price,
@@ -505,8 +642,13 @@ class VeliStoreScraper:
                 'source': 'VELI_STORE'
             }
             
+            logger.debug(f"Parsed product: {name} - {final_price} GEL")
+            return product
+            
         except Exception as e:
-            logger.error(f"Error parsing product page: {e}")
+            logger.error(f"Error parsing product page {url}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
     
     def run(self):

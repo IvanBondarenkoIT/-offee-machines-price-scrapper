@@ -1,0 +1,26 @@
+{
+  "description": "Direct URLs for Veli Store products not found in category pages",
+  "products": {
+    "CTJ2103.BK": {
+      "url": "https://veli.store/en/details/delonghi-ctj2103bk-toaster-black/?sku=8004399761278",
+      "name": "DeLonghi CTJ2103.BK Toaster Black",
+      "note": "Toaster - not in coffee category"
+    },
+    "CTOV2103.BG": {
+      "url": "https://veli.store/en/details/delonghi-ctov2103bg-icona-vintage-toaster-cream/?sku=8004399761322",
+      "name": "DeLonghi CTOV2103.BG Icona Vintage Toaster Cream",
+      "note": "Toaster - not in coffee category"
+    },
+    "DLSC301": {
+      "url": "https://veli.store/en/details/delonghi-dlsc301-6bicc/?sku=129656",
+      "name": "DeLonghi DLSC 301 6BICC-Cappuccino",
+      "note": "Accessory - not in coffee category"
+    },
+    "ECAM290.81.TB": {
+      "url": "https://veli.store/en/details/delonghi-ecam29081tb-magnifica-evo-blackgray/?sku=8004399021419",
+      "name": "DeLonghi ECAM290.81.TB Magnifica Evo",
+      "note": "Coffee machine - might be missing from category"
+    }
+  }
+}
+
