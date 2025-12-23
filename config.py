@@ -116,12 +116,12 @@ COFFEEPIN_CONFIG = {
 # VELI.STORE Configuration
 VELI_STORE_CONFIG = {
     "urls": [
-        # DeLonghi category (English)
-        "https://veli.store/en/category/electronics/delonghi/9246/",
+        # Coffee Makers & Pots category (all brands, page_size=40 shows all on one page)
+        "https://veli.store/en/category/electronics/kitchen-appliances/for-tea-coffee/coffee-makers-pots/1332/?page_size=40",
     ],
-    "pages_per_url": 5,  # Number of pages to scan per URL
-    "expected_products": 40,  # Approximate expected total
-    "pagination_url": "?page={page_num}",  # URL pattern for pagination
+    "pages_per_url": 1,  # Only 1 page needed (page_size=40 shows all products)
+    "expected_products": 12,  # DeLonghi + Melitta (filters out Bosch, Ariete, KRUPS)
+    "pagination_url": "?page={page_num}",  # URL pattern for pagination (if needed)
 }
 
 # VEGA.GE Configuration
