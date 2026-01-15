@@ -50,9 +50,12 @@ if STOCK_API_CONFIG["enabled"]:
 # ALTA Configuration
 ALTA_CONFIG = {
     "url": "https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s",
+    # Additional URL with shop availability filter (shows more products in some shops)
+    "url_with_shops": "https://alta.ge/en/coffee/available-shops=city-mall-saburtalo,saburtalo-branch,tbilisi-central,tbilisi-mall,east-point,city-mall-gldani,samgori-mall,rustavi-branch,telavi-branch,gori-branch,kutaisi-branch-2-zhiuli-shartava-str,zugdidi-branch,batumi-branch-chavchavadze-str;-c275s?shops=1,2,3,4,5,6,7,9,10,11,13,14,15",
     "excel_file": INPUT_DIR / "Parsing alta.xlsx",
     "load_more_button_xpath": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[3]/button",  # Fixed: div[3] not div[4]
-    "expected_products": 74,
+    "expected_products": 74,  # For main URL
+    "expected_products_with_shops": 55,  # For URL with shop filter
     "product_container_base": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[3]/div[{index}]",
 }
 

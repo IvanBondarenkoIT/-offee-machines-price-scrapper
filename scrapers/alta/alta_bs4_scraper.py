@@ -33,6 +33,7 @@ class AltaBS4Scraper:
     
     def __init__(self):
         self.url = ALTA_CONFIG["url"]
+        self.url_with_shops = ALTA_CONFIG.get("url_with_shops", None)
         self.driver = None
         self.products = []
         
@@ -59,10 +60,13 @@ class AltaBS4Scraper:
         
         logger.info("WebDriver setup complete")
         
-    def load_all_products_selenium(self):
+    def load_all_products_selenium(self, url: str, expected_count: int = None):
         """Use Selenium to load page and click 'Load More' until all products loaded"""
-        logger.info(f"Loading page: {self.url}")
-        self.driver.get(self.url)
+        if expected_count is None:
+            expected_count = ALTA_CONFIG["expected_products"]
+        
+        logger.info(f"Loading page: {url}")
+        self.driver.get(url)
         time.sleep(3)
         logger.info("Page loaded")
         
@@ -77,7 +81,7 @@ class AltaBS4Scraper:
                 product_count = len(product_elements)
                 logger.info(f"Current product count (h2 tags): {product_count}")
                 
-                if product_count >= ALTA_CONFIG["expected_products"]:
+                if product_count >= expected_count:
                     logger.info(f"All {product_count} products loaded!")
                     break
             except:
@@ -122,8 +126,11 @@ class AltaBS4Scraper:
         """Get current page HTML"""
         return self.driver.page_source
     
-    def parse_with_bs4(self, html: str):
+    def parse_with_bs4(self, html: str, source_url: str = None):
         """Parse products using BeautifulSoup - MUCH faster than Selenium"""
+        if source_url is None:
+            source_url = self.url
+        
         logger.info("Parsing with BeautifulSoup...")
         
         soup = BeautifulSoup(html, 'lxml')
@@ -151,6 +158,7 @@ class AltaBS4Scraper:
         logger.info(f"Extracted {len(likely_products)} product containers")
         
         # Parse each product
+        parsed_count = 0
         for idx, product_elem in enumerate(likely_products, 1):
             try:
                 # Extract product name (h2 tag)
@@ -189,7 +197,7 @@ class AltaBS4Scraper:
                 
                 # Build product dict
                 product = {
-                    "index": idx,
+                    "index": len(self.products) + 1,  # Global index across all URLs
                     "name": product_name,
                     "regular_price": regular_price,
                     "regular_price_str": regular_price_str,
@@ -198,10 +206,11 @@ class AltaBS4Scraper:
                     "final_price": discount_price if discount_price else regular_price,
                     "has_discount": discount_price is not None,
                     "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "url": self.url,
+                    "url": source_url,
                 }
                 
                 self.products.append(product)
+                parsed_count += 1
                 
                 if idx % 10 == 0:
                     logger.info(f"Progress: {idx}/{len(likely_products)} products...")
@@ -210,7 +219,7 @@ class AltaBS4Scraper:
                 logger.error(f"Error parsing product {idx}: {e}")
                 continue
         
-        logger.info(f"Parsing complete! Total products: {len(self.products)}")
+        logger.info(f"Parsing complete! Parsed {parsed_count} products from this URL")
     
     def clean_price(self, price_str: Optional[str]) -> Optional[float]:
         """Clean and convert price string to float"""
@@ -243,6 +252,52 @@ class AltaBS4Scraper:
             logger.error(f"Error saving results: {e}")
             raise
     
+    def scrape_url(self, url: str, expected_count: int = None):
+        """Scrape products from a single URL (load + parse)"""
+        logger.info(f"\n{'='*60}")
+        logger.info(f"Scraping URL: {url}")
+        logger.info(f"{'='*60}")
+        
+        # Load all products with Selenium
+        product_count = self.load_all_products_selenium(url, expected_count)
+        
+        # Get HTML and parse with BS4
+        html = self.get_page_html()
+        logger.info(f"Got HTML page source ({len(html)} chars)")
+        
+        # Parse with BeautifulSoup
+        self.parse_with_bs4(html, source_url=url)
+        
+        logger.info(f"Scraped {product_count} products from this URL")
+        return product_count
+    
+    def remove_duplicates(self):
+        """Remove duplicate products based on product name (case-insensitive)"""
+        if not self.products:
+            return
+        
+        logger.info(f"Removing duplicates from {len(self.products)} products...")
+        
+        seen_names = {}
+        unique_products = []
+        duplicates_removed = 0
+        
+        for product in self.products:
+            # Normalize product name for comparison (lowercase, strip)
+            name_key = product["name"].lower().strip()
+            
+            if name_key not in seen_names:
+                # First occurrence - keep it
+                seen_names[name_key] = True
+                unique_products.append(product)
+            else:
+                # Duplicate - skip it
+                duplicates_removed += 1
+                logger.debug(f"Removed duplicate: {product['name']}")
+        
+        self.products = unique_products
+        logger.info(f"Removed {duplicates_removed} duplicates. Unique products: {len(self.products)}")
+    
     def close(self):
         """Close the browser"""
         if self.driver:
@@ -259,21 +314,33 @@ class AltaBS4Scraper:
             
             self.setup_driver()
             
-            # Step 1: Load all products with Selenium
-            product_count = self.load_all_products_selenium()
+            # Step 1: Scrape main URL (original method)
+            logger.info("\n[1/2] Scraping main URL...")
+            self.scrape_url(
+                self.url, 
+                expected_count=ALTA_CONFIG["expected_products"]
+            )
             
-            # Step 2: Get HTML and parse with BS4 (FAST!)
-            html = self.get_page_html()
-            logger.info(f"Got HTML page source ({len(html)} chars)")
+            # Step 2: Scrape additional URL with shop filter (if configured)
+            if self.url_with_shops:
+                logger.info("\n[2/2] Scraping URL with shop availability filter...")
+                self.scrape_url(
+                    self.url_with_shops,
+                    expected_count=ALTA_CONFIG.get("expected_products_with_shops", 55)
+                )
+            else:
+                logger.info("\n[2/2] Additional URL with shops not configured, skipping...")
             
-            # Step 3: Parse with BeautifulSoup
-            self.parse_with_bs4(html)
+            # Step 3: Remove duplicates (products that appear in both URLs)
+            logger.info("\nRemoving duplicate products...")
+            self.remove_duplicates()
             
             # Step 4: Save results
+            logger.info("\nSaving results...")
             self.save_results()
             
             logger.info("=" * 60)
-            logger.info(f"SUCCESS! Scraped {len(self.products)} products")
+            logger.info(f"SUCCESS! Scraped {len(self.products)} unique products")
             logger.info("=" * 60)
             
         except Exception as e:
