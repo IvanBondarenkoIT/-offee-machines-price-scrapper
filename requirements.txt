@@ -7,6 +7,7 @@ pandas==2.1.4
 python-dotenv==1.0.1
 python-docx==1.2.0
 pywin32>=305  # For Word to PDF conversion (Windows only)
+woocommerce==3.0.0  # WooCommerce REST API client
 
 # Testing (optional)
 pytest==7.4.3

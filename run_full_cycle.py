@@ -227,7 +227,16 @@ class FullCycleRunner:
         # Show top 10 products
         print("\nTOP 10 PRODUCTS BY QUANTITY:")
         print("-"*80)
-        top10 = df.nlargest(10, 'Quantity')[['Quantity', 'Model', 'Our Price', 'DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE']]
+        # Include WooCommerce columns if they exist
+        display_cols = ['Quantity', 'Model', 'Our Price']
+        if 'DIM_KAVA_STOCK' in df.columns:
+            display_cols.append('DIM_KAVA_STOCK')
+        if 'DIM_KAVA_WC_PRICE' in df.columns:
+            display_cols.append('DIM_KAVA_WC_PRICE')
+        display_cols.extend(['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE'])
+        # Filter to only existing columns
+        display_cols = [col for col in display_cols if col in df.columns]
+        top10 = df.nlargest(10, 'Quantity')[display_cols]
         print(top10.to_string(index=False))
         
         # Show statistics
@@ -244,9 +253,17 @@ class FullCycleRunner:
         # Count where we have competitors
         competitor_cols = ['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE']
         for col in competitor_cols:
-            has_price = df[col] != '-'
-            if has_price.sum() > 0:
-                print(f"{col:10s}: {has_price.sum():2d} products with prices")
+            if col in df.columns:
+                has_price = df[col] != '-'
+                if has_price.sum() > 0:
+                    print(f"{col:15s}: {has_price.sum():2d} products with prices")
+        
+        # Show WooCommerce stock info if available
+        if 'DIM_KAVA_STOCK' in df.columns:
+            has_stock = (df['DIM_KAVA_STOCK'] != '-') & (df['DIM_KAVA_STOCK'].notna())
+            if has_stock.sum() > 0:
+                total_stock = df[has_stock]['DIM_KAVA_STOCK'].sum() if has_stock.sum() > 0 else 0
+                print(f"{'DIM_KAVA_STOCK':15s}: {has_stock.sum():2d} products with stock (total: {int(total_stock)} units)")
         
         return True
     

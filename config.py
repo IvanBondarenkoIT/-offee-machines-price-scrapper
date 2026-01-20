@@ -178,3 +178,29 @@ LOG_CONFIG = {
     "filename": LOGS_DIR / "scraper.log",
 }
 
+
+# WooCommerce API Configuration (для получения остатков со склада DimKava)
+WOOCOMMERCE_CONFIG = {
+    "enabled": os.getenv("USE_WOOCOMMERCE_STOCK", "false").lower() == "true",
+    "url": os.getenv("WC_URL", ""),
+    "consumer_key": os.getenv("WC_CONSUMER_KEY", ""),
+    "consumer_secret": os.getenv("WC_CONSUMER_SECRET", ""),
+    "api_version": os.getenv("WC_API_VERSION", "wc/v3"),
+    "timeout": int(os.getenv("WC_TIMEOUT", "30")),
+    "user_agent": os.getenv("WC_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+    "retry_attempts": 3,
+    "retry_delay": 2,
+}
+
+# Validate WooCommerce config if enabled
+if WOOCOMMERCE_CONFIG["enabled"]:
+    if not WOOCOMMERCE_CONFIG["url"]:
+        print("[WARNING] USE_WOOCOMMERCE_STOCK=true but WC_URL is not set in .env")
+        WOOCOMMERCE_CONFIG["enabled"] = False
+    if not WOOCOMMERCE_CONFIG["consumer_key"]:
+        print("[WARNING] USE_WOOCOMMERCE_STOCK=true but WC_CONSUMER_KEY is not set in .env")
+        WOOCOMMERCE_CONFIG["enabled"] = False
+    if not WOOCOMMERCE_CONFIG["consumer_secret"]:
+        print("[WARNING] USE_WOOCOMMERCE_STOCK=true but WC_CONSUMER_SECRET is not set in .env")
+        WOOCOMMERCE_CONFIG["enabled"] = False
+
