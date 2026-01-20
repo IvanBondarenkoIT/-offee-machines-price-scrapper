@@ -77,11 +77,13 @@ WOOCOMMERCE_CONFIG = {
 ```
 USE_WOOCOMMERCE_STOCK=true
 WC_URL=https://dimkava.ge
-WC_CONSUMER_KEY=ck_9f1e14b6d61fe7ee49ec1f79fb21b83207d96b5a
-WC_CONSUMER_SECRET=cs_0c7a727e5cfeea67f45c7d9db5828134261da4de
+WC_CONSUMER_KEY=ck_your_consumer_key_here
+WC_CONSUMER_SECRET=cs_your_consumer_secret_here
 WC_API_VERSION=wc/v3
 WC_TIMEOUT=30
 ```
+
+**Важно:** Реальные credentials должны быть только в файле `.env` (который не в git), а не в документации!
 
 ### 2. Интеграция в `build_price_comparison.py`
 
