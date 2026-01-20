@@ -54,7 +54,9 @@
   - `sku` - артикул
   - `stock_quantity` - остаток на складе (главное поле!)
   - `stock_status` - статус (instock/outofstock/onbackorder)
-  - `price` - цена
+  - `price` - текущая цена (может быть regular_price или sale_price)
+  - `regular_price` - обычная цена (без скидки)
+  - `sale_price` - цена со скидкой (если есть скидка)
   - `model` - извлеченная модель из названия (используя ModelExtractor)
 
 **Конфигурация (добавить в `config.py`):**
@@ -95,7 +97,10 @@ WC_TIMEOUT=30
    - `model` - извлеченная модель
    - `stock_quantity` - остаток на складе
    - `sku` - артикул
-   - `price` - цена (опционально, для проверки)
+   - `price` - текущая цена (sale_price если есть, иначе regular_price)
+   - `regular_price` - обычная цена (без скидки)
+   - `sale_price` - цена со скидкой (если есть)
+   - `has_discount` - есть ли скидка (sale_price != None и sale_price != regular_price)
 
 **Вызов:** Добавить в метод `__init__()` или в начале `build_comparison_table()`
 
@@ -103,13 +108,19 @@ WC_TIMEOUT=30
 
 **Место:** Метод `build_comparison_table()`
 
-**Новый столбец:** `DIM_KAVA_STOCK` или `DimKava Stock`
+**Новые столбцы:**
+- `DIM_KAVA_STOCK` или `DimKava Stock` - остаток на складе
+- Опционально: можно добавить столбец с ценами из WooCommerce для сравнения
 
 **Логика сопоставления:**
 1. Для каждой строки в таблице сравнения (по модели):
    - Найти соответствующий товар в WooCommerce данных
    - Использовать сопоставление по модели (как для других источников)
-   - Если найдено - добавить `stock_quantity` в столбец
+   - Если найдено:
+     - Добавить `stock_quantity` в столбец `DIM_KAVA_STOCK`
+     - Если есть `sale_price` - использовать его как финальную цену
+     - Если нет `sale_price` - использовать `regular_price`
+     - Сохранить информацию о скидке (если `sale_price` != `regular_price`)
    - Если не найдено - оставить пустым или "-"
 
 **Приоритет сопоставления:**
@@ -188,6 +199,14 @@ response = wcapi.get('products', params={
 products = response.json()
 # Фильтровать: stock_quantity > 0
 in_stock = [p for p in products if p.get('stock_quantity', 0) > 0]
+
+# Извлечь цены
+for product in in_stock:
+    regular_price = product.get('regular_price', '0')
+    sale_price = product.get('sale_price', '')
+    # Текущая цена: sale_price если есть, иначе regular_price
+    current_price = sale_price if sale_price else regular_price
+    has_discount = bool(sale_price and sale_price != regular_price)
 ```
 
 ---
@@ -196,9 +215,11 @@ in_stock = [p for p in products if p.get('stock_quantity', 0) > 0]
 
 1. **Название столбца:** `DIM_KAVA_STOCK` или `DimKava Stock` или другое?
 2. **Формат значения:** Только число (остаток) или "Остаток: X шт"?
-3. **Сопоставление:** Использовать существующий механизм сопоставления (ModelExtractor) или нужна отдельная логика?
-4. **Фильтрация:** Фильтровать таблицу сравнения (показывать только товары с остатками) или показывать все, но с пустым столбцом для товаров без остатков?
-5. **Кэширование:** Нужно ли кэшировать данные WooCommerce API для ускорения?
+3. **Цены из WooCommerce:** Добавлять столбец с ценами из WooCommerce (с учетом sale_price) или только остатки?
+4. **Формат цен:** Показывать только финальную цену или "regular_price \\ sale_price" (как для других источников)?
+5. **Сопоставление:** Использовать существующий механизм сопоставления (ModelExtractor) или нужна отдельная логика?
+6. **Фильтрация:** Фильтровать таблицу сравнения (показывать только товары с остатками) или показывать все, но с пустым столбцом для товаров без остатков?
+7. **Кэширование:** Нужно ли кэшировать данные WooCommerce API для ускорения?
 
 ---
 
@@ -209,6 +230,7 @@ in_stock = [p for p in products if p.get('stock_quantity', 0) > 0]
 - [ ] Реализовать подключение к API
 - [ ] Реализовать получение товаров с пагинацией
 - [ ] Реализовать фильтрацию (stock_quantity > 0)
+- [ ] Извлечь цены: `regular_price`, `sale_price`, определить финальную цену
 - [ ] Добавить извлечение моделей
 - [ ] Добавить обработку ошибок и retry логику
 
@@ -219,9 +241,10 @@ in_stock = [p for p in products if p.get('stock_quantity', 0) > 0]
 
 ### Этап 3: Интеграция в build_price_comparison.py
 - [ ] Добавить метод `load_woocommerce_stock()`
-- [ ] Интегрировать загрузку данных
+- [ ] Интегрировать загрузку данных (включая regular_price и sale_price)
 - [ ] Добавить сопоставление товаров по моделям
 - [ ] Добавить столбец `DIM_KAVA_STOCK` в таблицу сравнения
+- [ ] Опционально: добавить столбец с ценами из WooCommerce (если требуется)
 
 ### Этап 4: Тестирование
 - [ ] Протестировать подключение к WooCommerce API
