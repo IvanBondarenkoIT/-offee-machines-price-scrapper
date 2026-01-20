@@ -77,10 +77,20 @@ KONTAKT_CONFIG = {
 ELITE_CONFIG = {
     "url_base": "https://ee.ge/en/coffee-machine/brand=delonghi;-c201t",
     "excel_file": INPUT_DIR / "Parsing elit.xlsx",
-    "pages": 3,  # Total pages with pagination
+    "pages": 3,  # Total pages with pagination for coffee machines
     "items_per_page": 16,
     "expected_products": 48,  # 3 pages × 16 items (actually 40)
     "pagination_param": "page",  # URL: ?page=2
+    # Additional URLs for other DeLonghi products
+    "url_toasters": "https://ee.ge/en/toaster-c240s",
+    "toasters_pages": 2,  # Total pages for toasters (at least 2 pages)
+    "expected_toasters": 20,  # Approximate number of DeLonghi toasters
+    "url_kettles": "https://ee.ge/en/kettle-c215s",
+    "kettles_pages": 2,  # Total pages for kettles
+    "expected_kettles": 10,  # Approximate number of DeLonghi kettles
+    "url_grinders": "https://ee.ge/en/coffee-grinder-c202s",
+    "grinders_pages": 2,  # Total pages for coffee grinders
+    "expected_grinders": 10,  # Approximate number of DeLonghi grinders
 }
 
 # DIM KAVA Configuration (our own store)

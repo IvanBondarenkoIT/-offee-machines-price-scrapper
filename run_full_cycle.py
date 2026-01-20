@@ -83,7 +83,7 @@ class FullCycleRunner:
             {
                 'name': 'ELITE',
                 'path': self.base_dir / 'scrapers' / 'elite' / 'elite_bs4_scraper.py',
-                'expected': 40
+                'expected': 60  # Updated: coffee machines + toasters + kettles + grinders
             },
             {
                 'name': 'DIM_KAVA',

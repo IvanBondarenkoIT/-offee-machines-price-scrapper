@@ -30,6 +30,12 @@ class EliteBS4Scraper:
     def __init__(self):
         self.url_base = ELITE_CONFIG["url_base"]
         self.pages = ELITE_CONFIG["pages"]
+        self.url_toasters = ELITE_CONFIG.get("url_toasters", None)
+        self.toasters_pages = ELITE_CONFIG.get("toasters_pages", 2)
+        self.url_kettles = ELITE_CONFIG.get("url_kettles", None)
+        self.kettles_pages = ELITE_CONFIG.get("kettles_pages", 2)
+        self.url_grinders = ELITE_CONFIG.get("url_grinders", None)
+        self.grinders_pages = ELITE_CONFIG.get("grinders_pages", 2)
         self.driver = None
         self.products = []
         
@@ -56,22 +62,33 @@ class EliteBS4Scraper:
         
         logger.info("WebDriver setup complete")
         
-    def scrape_page(self, page_num: int) -> List[Dict]:
+    def scrape_page(self, page_num: int, url_base: str = None) -> List[Dict]:
         """Scrape products from a single page with retry logic"""
+        if url_base is None:
+            url_base = self.url_base
+        
         # Build URL
         if page_num == 1:
-            url = self.url_base
+            url = url_base
         else:
-            url = f"{self.url_base}?page={page_num}"
+            url = f"{url_base}?page={page_num}"
         
         logger.info(f"Loading page {page_num}: {url}")
         
-        # Retry logic for slow sites
+        # Retry logic for slow sites (Cloudflare protection)
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 self.driver.get(url)
-                time.sleep(6)  # Increased wait time for slow sites
+                # Wait longer for Cloudflare to pass and content to load
+                time.sleep(10)  # Increased wait time for Cloudflare
+                
+                # Scroll to trigger lazy loading
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(3)
+                self.driver.execute_script("window.scrollTo(0, 0);")
+                time.sleep(2)
+                
                 break
             except Exception as e:
                 if attempt < max_retries - 1:
@@ -81,16 +98,44 @@ class EliteBS4Scraper:
                     logger.error(f"All {max_retries} attempts failed for page {page_num}")
                     raise
         
-        # Get HTML
+        # Get HTML after content loads
         html = self.driver.page_source
         logger.info(f"Got HTML ({len(html)} chars)")
+        
+        # Check if Cloudflare challenge is present
+        if "Enable JavaScript and cookies to continue" in html or "Cloudflare" in html:
+            logger.warning("Cloudflare challenge detected, waiting longer...")
+            time.sleep(10)
+            html = self.driver.page_source
+            logger.info(f"Got HTML after Cloudflare wait ({len(html)} chars)")
         
         # Parse with BS4
         soup = BeautifulSoup(html, 'lxml')
         
-        # Find all h3 tags (product names based on debug)
+        # Try multiple selectors for product names
+        # First try h3 (original)
         h3_tags = soup.find_all('h3')
         logger.info(f"Found {len(h3_tags)} h3 tags on page {page_num}")
+        
+        # If no h3, try h2
+        if len(h3_tags) == 0:
+            h3_tags = soup.find_all('h2')
+            logger.info(f"Found {len(h3_tags)} h2 tags on page {page_num}")
+        
+        # If still nothing, try links with product-like structure
+        if len(h3_tags) == 0:
+            # Look for links that might contain product names
+            all_links = soup.find_all('a', href=True)
+            # Filter links that might be products
+            product_links = []
+            for link in all_links:
+                text = link.get_text(strip=True)
+                # Check if link text looks like a product name (has model number or brand)
+                if text and (len(text) > 10 and (re.search(r'[A-Z]{2,}\d+', text) or 'delonghi' in text.lower())):
+                    product_links.append(link)
+            if product_links:
+                logger.info(f"Found {len(product_links)} potential product links")
+                h3_tags = product_links  # Use links as product name containers
         
         # Filter DeLonghi products
         page_products = []
@@ -168,21 +213,26 @@ class EliteBS4Scraper:
         logger.info(f"Page {page_num}: Found {len(page_products)} DeLonghi products")
         return page_products
     
-    def scrape_all_pages(self):
-        """Scrape all pages with pagination"""
-        logger.info(f"Scraping {self.pages} pages...")
+    def scrape_all_pages(self, url_base: str = None, max_pages: int = None, category_name: str = "products"):
+        """Scrape all pages with pagination for a given URL base"""
+        if url_base is None:
+            url_base = self.url_base
+        if max_pages is None:
+            max_pages = self.pages
+        
+        logger.info(f"Scraping {max_pages} pages for {category_name}...")
         
         all_products = []
         
-        for page_num in range(1, self.pages + 1):
-            products = self.scrape_page(page_num)
+        for page_num in range(1, max_pages + 1):
+            products = self.scrape_page(page_num, url_base=url_base)
             all_products.extend(products)
-            logger.info(f"Total so far: {len(all_products)} products")
+            logger.info(f"Total so far: {len(all_products)} {category_name}")
         
         # Build final product list
-        for idx, prod_data in enumerate(all_products, 1):
+        for prod_data in all_products:
             product = {
-                "index": idx,
+                "index": len(self.products) + 1,  # Global index across all categories
                 "name": prod_data['name'],
                 "regular_price": prod_data['regular_price'],
                 "regular_price_str": prod_data['regular_price_str'],
@@ -191,14 +241,15 @@ class EliteBS4Scraper:
                 "final_price": prod_data['discount_price'] if prod_data['discount_price'] else prod_data['regular_price'],
                 "has_discount": prod_data['discount_price'] is not None,
                 "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "url": f"{self.url_base}?page={prod_data['page']}" if prod_data['page'] > 1 else self.url_base,
+                "url": f"{url_base}?page={prod_data['page']}" if prod_data['page'] > 1 else url_base,
                 "store": "ELITE",
                 "page": prod_data['page'],
+                "category": category_name,
             }
             
             self.products.append(product)
         
-        logger.info(f"Total products scraped: {len(self.products)}")
+        logger.info(f"Total {category_name} scraped: {len([p for p in self.products if p.get('category') == category_name])}")
     
     def clean_price(self, price_str: Optional[str]) -> Optional[float]:
         """Clean and convert price string to float"""
@@ -247,11 +298,69 @@ class EliteBS4Scraper:
             logger.info("=" * 60)
             
             self.setup_driver()
-            self.scrape_all_pages()
+            
+            # Step 1: Scrape coffee machines (original functionality)
+            logger.info("\n[1/2] Scraping coffee machines...")
+            self.scrape_all_pages(
+                url_base=self.url_base,
+                max_pages=self.pages,
+                category_name="coffee_machines"
+            )
+            
+            # Step 2: Scrape toasters
+            step_num = 2
+            total_steps = 4
+            if self.url_toasters:
+                logger.info(f"\n[{step_num}/{total_steps}] Scraping toasters...")
+                self.scrape_all_pages(
+                    url_base=self.url_toasters,
+                    max_pages=self.toasters_pages,
+                    category_name="toasters"
+                )
+                step_num += 1
+            else:
+                logger.info(f"\n[{step_num}/{total_steps}] Toasters URL not configured, skipping...")
+                total_steps -= 1
+            
+            # Step 3: Scrape kettles
+            if self.url_kettles:
+                logger.info(f"\n[{step_num}/{total_steps}] Scraping kettles...")
+                self.scrape_all_pages(
+                    url_base=self.url_kettles,
+                    max_pages=self.kettles_pages,
+                    category_name="kettles"
+                )
+                step_num += 1
+            else:
+                logger.info(f"\n[{step_num}/{total_steps}] Kettles URL not configured, skipping...")
+                total_steps -= 1
+            
+            # Step 4: Scrape coffee grinders
+            if self.url_grinders:
+                logger.info(f"\n[{step_num}/{total_steps}] Scraping coffee grinders...")
+                self.scrape_all_pages(
+                    url_base=self.url_grinders,
+                    max_pages=self.grinders_pages,
+                    category_name="grinders"
+                )
+            else:
+                logger.info(f"\n[{step_num}/{total_steps}] Coffee grinders URL not configured, skipping...")
+            
+            # Step 5: Save all results
             self.save_results()
             
+            # Summary
+            coffee_machines_count = len([p for p in self.products if p.get('category') == 'coffee_machines'])
+            toasters_count = len([p for p in self.products if p.get('category') == 'toasters'])
+            kettles_count = len([p for p in self.products if p.get('category') == 'kettles'])
+            grinders_count = len([p for p in self.products if p.get('category') == 'grinders'])
+            
             logger.info("=" * 60)
-            logger.info(f"SUCCESS! Scraped {len(self.products)} products from {self.pages} pages")
+            logger.info(f"SUCCESS! Scraped {len(self.products)} total products:")
+            logger.info(f"  - Coffee machines: {coffee_machines_count}")
+            logger.info(f"  - Toasters: {toasters_count}")
+            logger.info(f"  - Kettles: {kettles_count}")
+            logger.info(f"  - Coffee grinders: {grinders_count}")
             logger.info("=" * 60)
             
         except Exception as e:
