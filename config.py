@@ -1,6 +1,10 @@
-# Configuration for Alta Price Scraper
+# Configuration for Coffee Machines Price Scraper
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Base directories
 BASE_DIR = Path(__file__).parent
@@ -13,12 +17,45 @@ LOGS_DIR = BASE_DIR / "logs"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
+# ========================================
+# STOCK API CONFIGURATION
+# ========================================
+STOCK_API_CONFIG = {
+    # Enable/disable API (reads from .env: USE_STOCK_API)
+    "enabled": os.getenv("USE_STOCK_API", "false").lower() == "true",
+    
+    # API endpoint URL
+    "api_url": os.getenv("STOCK_API_URL", ""),
+    
+    # API tokens (primary and fallback)
+    "api_token": os.getenv("STOCK_API_TOKEN", ""),
+    "fallback_token": os.getenv("STOCK_API_FALLBACK_TOKEN", ""),
+    
+    # Timeout and retry settings
+    "timeout": int(os.getenv("STOCK_API_TIMEOUT", "30")),
+    "retry_attempts": 3,
+    "retry_delay": 2,
+    
+    # Fallback to Excel if API fails
+    "fallback_to_excel": os.getenv("STOCK_API_FALLBACK_TO_EXCEL", "true").lower() == "true",
+}
+
+# Validate API config if enabled
+if STOCK_API_CONFIG["enabled"]:
+    if not STOCK_API_CONFIG["api_url"]:
+        print("[WARNING] USE_STOCK_API=true but STOCK_API_URL is not set in .env")
+        print("          Will fall back to Excel file.")
+        STOCK_API_CONFIG["enabled"] = False
+
 # ALTA Configuration
 ALTA_CONFIG = {
     "url": "https://alta.ge/en/small-domestic-appliances/brand=delonghi;-c7s",
+    # Additional URL with shop availability filter (shows more products in some shops)
+    "url_with_shops": "https://alta.ge/en/coffee/available-shops=city-mall-saburtalo,saburtalo-branch,tbilisi-central,tbilisi-mall,east-point,city-mall-gldani,samgori-mall,rustavi-branch,telavi-branch,gori-branch,kutaisi-branch-2-zhiuli-shartava-str,zugdidi-branch,batumi-branch-chavchavadze-str;-c275s?shops=1,2,3,4,5,6,7,9,10,11,13,14,15",
     "excel_file": INPUT_DIR / "Parsing alta.xlsx",
-    "load_more_button_xpath": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[4]/button",
-    "expected_products": 74,
+    "load_more_button_xpath": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[3]/button",  # Fixed: div[3] not div[4]
+    "expected_products": 74,  # For main URL
+    "expected_products_with_shops": 55,  # For URL with shop filter
     "product_container_base": "/html/body/div[1]/div/main/div/div/div[2]/div[2]/div[3]/div[{index}]",
 }
 
@@ -36,41 +73,6 @@ KONTAKT_CONFIG = {
     "product_container_base": "/html/body/div[1]/main/div[4]/div/div[5]/div/div[2]/div[{index}]",
 }
 
-# ELITE Configuration
-ELITE_CONFIG = {
-    "url_base": "https://ee.ge/en/coffee-machine/brand=delonghi;-c201t",
-    "excel_file": INPUT_DIR / "Parsing elit.xlsx",
-    "pages": 3,  # Total pages with pagination
-    "items_per_page": 16,
-    "expected_products": 48,  # 3 pages × 16 items (actually 40)
-    "pagination_param": "page",  # URL: ?page=2
-}
-
-# DIM KAVA Configuration (our own store)
-DIMKAVA_CONFIG = {
-    "urls": [
-        # Brand category pages
-        "https://dimkava.ge/brand/delonghi/",
-        "https://dimkava.ge/brand/melita/",
-        "https://dimkava.ge/brand/nivona/",
-    ],
-    "expected_products": 120,  # combined brands
-    "wait_for_load": 8,  # Seconds to wait after scrolling
-    "scroll_pause": 3,  # Seconds between scrolls
-    "num_scrolls": 5,  # Number of scrolls to trigger lazy loading
-}
-
-# COFFEEHUB Configuration
-COFFEEHUB_CONFIG = {
-    "urls": [
-        "https://coffeehub.ge/shop/?s=Delonghi&post_type=product",  # DeLonghi filter
-        "https://coffeehub.ge/shop/?s=Melitta&post_type=product",  # Melitta filter
-    ],
-    "pages_per_url": 2,  # Pages to scrape for each URL
-    "expected_products": 50,  # Expected total (DeLonghi + Melitta)
-    "pagination_url": "&paged={page_num}",  # URL pattern for pagination
-}
-
 # COFFEEPIN Configuration
 COFFEEPIN_CONFIG = {
     "urls": [
@@ -83,20 +85,58 @@ COFFEEPIN_CONFIG = {
     "pagination_url": "&page={page_num}",  # URL pattern for pagination
 }
 
-<<<<<<< HEAD
-=======
 # VELI.STORE Configuration
 VELI_STORE_CONFIG = {
     "urls": [
-        # Main coffee machines catalog (English)
-        "https://veli.store/en/catalog/coffee-machines",
+        # Coffee Makers & Pots category (all brands, page_size=40 shows all on one page)
+        "https://veli.store/en/category/electronics/kitchen-appliances/for-tea-coffee/coffee-makers-pots/1332/?page_size=40",
     ],
-    "pages_per_url": 5,  # Number of pages to scan per URL
-    "expected_products": 40,  # Approximate expected total
-    "pagination_url": "?page={page_num}",  # URL pattern for pagination
+    "pages_per_url": 1,  # Only 1 page needed (page_size=40 shows all products)
+    "expected_products": 16,  # 12 from category + 4 from direct URLs (config/veli_direct_urls.json)
+    "pagination_url": "?page={page_num}",  # URL pattern for pagination (if needed)
 }
 
->>>>>>> 36e36cb99264bc89a933e7fa60c6102d8027ef35
+# ELITE Configuration
+ELITE_CONFIG = {
+    "url_base": "https://ee.ge/en/coffee-machine/brand=delonghi;-c201t",
+    "excel_file": INPUT_DIR / "Parsing elit.xlsx",
+    "pages": 3,  # Total pages with pagination for coffee machines
+    "items_per_page": 16,
+    "expected_products": 48,  # 3 pages × 16 items (actually 40)
+    "pagination_param": "page",  # URL: ?page=2
+    # Additional URLs for other DeLonghi products
+    "url_toasters": "https://ee.ge/en/toaster-c240s",
+    "toasters_pages": 2,  # Total pages for toasters (at least 2 pages)
+    "expected_toasters": 20,  # Approximate number of DeLonghi toasters
+    "url_kettles": "https://ee.ge/en/kettle-c215s",
+    "kettles_pages": 2,  # Total pages for kettles
+    "expected_kettles": 10,  # Approximate number of DeLonghi kettles
+    "url_grinders": "https://ee.ge/en/coffee-grinder-c202s",
+    "grinders_pages": 2,  # Total pages for coffee grinders
+    "expected_grinders": 10,  # Approximate number of DeLonghi grinders
+}
+
+# DIM KAVA Configuration (our own store)
+DIMKAVA_CONFIG = {
+    "urls": [
+        # Brand category pages
+        "https://dimkava.ge/brand/delonghi/",  # Expected: 42 products
+        "https://dimkava.ge/brand/melita/",    # Expected: 22 products
+        "https://dimkava.ge/brand/nivona/",    # Expected: 10 products
+    ],
+    "expected_products": 72,  # 42 DeLonghi + 22 Melitta + 10 Nivona - 2 without price = 72
+}
+
+# COFFEEHUB Configuration
+COFFEEHUB_CONFIG = {
+    "urls": [
+        "https://coffeehub.ge/product-category/coffee-machines/",  # All coffee machines
+    ],
+    "pages_per_url": 13,  # Total pages (151 products / 12 per page ≈ 13 pages)
+    "expected_products": 50,  # Expected DeLonghi + Melitta (will filter from 151 total)
+    "pagination_url": "page/{page_num}/",  # URL pattern: .../page/2/
+}
+
 # VEGA.GE Configuration
 VEGA_GE_CONFIG = {
     "urls": [
@@ -114,7 +154,7 @@ SELENIUM_CONFIG = {
     "page_load_timeout": 30,
     "load_more_wait": 1,  # Seconds to wait after clicking "Load More"
     "max_load_more_attempts": 30,  # Increased for 74 products
-    "headless": True,  # Set to True to run without browser window (required for Railway)
+    "headless": False,  # Set to False for local testing (WordPress lazy loading detection)
 }
 
 # User agents for rotation (if needed)
@@ -138,3 +178,26 @@ LOG_CONFIG = {
     "filename": LOGS_DIR / "scraper.log",
 }
 
+# WooCommerce API Configuration (для получения остатков со склада DimKava)
+WOOCOMMERCE_CONFIG = {
+    "enabled": os.getenv("USE_WOOCOMMERCE_STOCK", "false").lower() == "true",
+    "url": os.getenv("WC_URL", ""),
+    "consumer_key": os.getenv("WC_CONSUMER_KEY", ""),
+    "consumer_secret": os.getenv("WC_CONSUMER_SECRET", ""),
+    "api_version": os.getenv("WC_API_VERSION", "wc/v3"),
+    "timeout": int(os.getenv("WC_TIMEOUT", "30")),
+    "retry_attempts": 3,
+    "retry_delay": 2,
+}
+
+# Validate WooCommerce config if enabled
+if WOOCOMMERCE_CONFIG["enabled"]:
+    if not WOOCOMMERCE_CONFIG["url"]:
+        print("[WARNING] USE_WOOCOMMERCE_STOCK=true but WC_URL is not set in .env")
+        WOOCOMMERCE_CONFIG["enabled"] = False
+    if not WOOCOMMERCE_CONFIG["consumer_key"]:
+        print("[WARNING] USE_WOOCOMMERCE_STOCK=true but WC_CONSUMER_KEY is not set in .env")
+        WOOCOMMERCE_CONFIG["enabled"] = False
+    if not WOOCOMMERCE_CONFIG["consumer_secret"]:
+        print("[WARNING] USE_WOOCOMMERCE_STOCK=true but WC_CONSUMER_SECRET is not set in .env")
+        WOOCOMMERCE_CONFIG["enabled"] = False
