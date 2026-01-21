@@ -71,22 +71,13 @@ portable_build/
 output/
 inbox/
 
-<<<<<<< HEAD
 # Data directories
 # NOTE: data/output/ IS included for Railway deployment (contains reports)
 # data/output/*  <- COMMENTED OUT to allow reports in Railway
 data/inbox/*.xlsx
 data/inbox/*.xls
 
-# Git
-.git/
-.gitignore
-.gitattributes
-
-# Documentation
-=======
 # Documentation (not needed in container)
->>>>>>> 36e36cb99264bc89a933e7fa60c6102d8027ef35
 *.md
 !README.md
 docs/
