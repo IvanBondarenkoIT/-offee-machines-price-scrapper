@@ -164,13 +164,13 @@ class ModelExtractor:
     @classmethod
     def normalize_for_matching(cls, model: str) -> str:
         """
-        Aggressive normalization for matching - removes ALL special chars
+        Aggressive normalization for matching - removes ALL special chars and suffixes
         
         Args:
             model: Model code
             
         Returns:
-            Normalized model (only letters and numbers)
+            Normalized model (only letters and numbers, without suffixes)
             
         Examples:
             >>> ModelExtractor.normalize_for_matching("EC 9865 M")
@@ -178,7 +178,11 @@ class ModelExtractor:
             >>> ModelExtractor.normalize_for_matching("ECAM 22.110.B")
             'ECAM22110B'
             >>> ModelExtractor.normalize_for_matching("DL EC885.BG")
-            'EC885BG'
+            'EC885'
+            >>> ModelExtractor.normalize_for_matching("F86/0-100EU")
+            'F860100'
+            >>> ModelExtractor.normalize_for_matching("KBD2001.BK")
+            'KBD2001'
         """
         if not model:
             return ""
@@ -192,6 +196,35 @@ class ModelExtractor:
         # Remove DL prefix (except for DLSC)
         if not is_dlsc and normalized.startswith('DL'):
             normalized = normalized[2:]
+        
+        # Remove regional suffixes (EU, UK, RU, US, etc.) at the end
+        # Only remove if they are at the very end and model is long enough
+        regional_suffixes = ['EU', 'UK', 'RU', 'US', 'DE', 'FR', 'IT', 'ES', 'PL', 'CZ']
+        for suffix in regional_suffixes:
+            if normalized.endswith(suffix) and len(normalized) > len(suffix) + 2:
+                normalized = normalized[:-len(suffix)]
+                break  # Only remove one suffix
+        
+        # Remove color suffixes (common color codes: BK, W, R, B, SB, TB, GY, GR, AZ, BG, etc.)
+        # Only remove if they are at the very end and model is long enough
+        # Pattern: 1-3 uppercase letters at the end (but not if it's part of the model number)
+        # Examples: EC685R -> EC685, KBD2001BK -> KBD2001, ECAM22110SB -> ECAM22110
+        # But: ECAM22 -> keep as is (too short)
+        color_suffix_pattern = r'([A-Z]{1,3})$'
+        match = re.search(color_suffix_pattern, normalized)
+        if match:
+            suffix = match.group(1)
+            # Common color codes
+            color_codes = ['BK', 'W', 'R', 'B', 'SB', 'TB', 'GY', 'GR', 'AZ', 'BG', 'M', 'S', 'BL', 'WH', 'RD', 'SL', 'ST']
+            # Check if it's a color code and model is long enough
+            if suffix in color_codes and len(normalized) > len(suffix) + 3:
+                # Additional check: make sure it's not part of a number
+                # E.g., "ECAM22" should not become "ECAM" (22 is a number, not a color)
+                base = normalized[:-len(suffix)]
+                # If base ends with a digit, it's likely a color suffix
+                # If base ends with a letter, it might be part of the model
+                if base and base[-1].isdigit():
+                    normalized = base
         
         return normalized
     

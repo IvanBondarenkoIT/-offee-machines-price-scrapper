@@ -9,6 +9,15 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from utils.model_extractor import ModelExtractor
 
+# WooCommerce imports (optional - graceful degradation if not available)
+try:
+    from utils.woocommerce_client import WooCommerceClient
+    from config import WOOCOMMERCE_CONFIG
+    WOOCOMMERCE_AVAILABLE = True
+except ImportError:
+    WOOCOMMERCE_AVAILABLE = False
+    WOOCOMMERCE_CONFIG = {"enabled": False}
+
 class PriceComparisonBuilder:
     """Build price comparison table"""
     
@@ -20,6 +29,7 @@ class PriceComparisonBuilder:
         # Store loaded data
         self.inventory = None
         self.scraped_data = {}
+        self.woocommerce_stock = None  # WooCommerce stock data
         
         # Model mapping: model -> list of products from different sources
         self.model_map = {}
@@ -108,6 +118,66 @@ class PriceComparisonBuilder:
         
         return result
     
+    def load_woocommerce_stock(self) -> pd.DataFrame:
+        """Load stock data from WooCommerce API"""
+        print("\n[2.5/6] Loading WOOCOMMERCE STOCK...")
+        
+        # Check if WooCommerce is available
+        if not WOOCOMMERCE_AVAILABLE:
+            print("  [SKIP] WooCommerce client not available (utils/woocommerce_client.py not found)")
+            return pd.DataFrame()
+        
+        # Check if WooCommerce is enabled
+        if not WOOCOMMERCE_CONFIG.get("enabled", False):
+            print("  [SKIP] WooCommerce integration is disabled (USE_WOOCOMMERCE_STOCK=false)")
+            return pd.DataFrame()
+        
+        # Validate config
+        if not WOOCOMMERCE_CONFIG.get("url"):
+            print("  [WARNING] WC_URL not set in .env, skipping WooCommerce")
+            return pd.DataFrame()
+        
+        if not WOOCOMMERCE_CONFIG.get("consumer_key"):
+            print("  [WARNING] WC_CONSUMER_KEY not set in .env, skipping WooCommerce")
+            return pd.DataFrame()
+        
+        if not WOOCOMMERCE_CONFIG.get("consumer_secret"):
+            print("  [WARNING] WC_CONSUMER_SECRET not set in .env, skipping WooCommerce")
+            return pd.DataFrame()
+        
+        try:
+            print("  [WooCommerce] Connecting to API...")
+            
+            # Create WooCommerce client
+            client = WooCommerceClient(
+                url=WOOCOMMERCE_CONFIG["url"],
+                consumer_key=WOOCOMMERCE_CONFIG["consumer_key"],
+                consumer_secret=WOOCOMMERCE_CONFIG["consumer_secret"],
+                api_version=WOOCOMMERCE_CONFIG.get("api_version", "wc/v3"),
+                timeout=WOOCOMMERCE_CONFIG.get("timeout", 30),
+                retry_attempts=WOOCOMMERCE_CONFIG.get("retry_attempts", 3),
+                retry_delay=WOOCOMMERCE_CONFIG.get("retry_delay", 2)
+            )
+            
+            # Get data
+            df_result = client.get_stock_data()
+            
+            # Validate
+            if df_result is None or len(df_result) == 0:
+                print("  [WooCommerce] No products with stock > 0 returned")
+                return pd.DataFrame()
+            
+            print(f"  [WooCommerce] [OK] Loaded {len(df_result)} products with stock > 0")
+            print(f"                With discount: {client.stats['with_discount']}")
+            print(f"                Without model: {client.stats['no_model']}")
+            
+            return df_result
+            
+        except Exception as e:
+            print(f"  [WooCommerce] [ERROR] Failed to load: {e}")
+            print("  [WooCommerce] [WARNING] Continuing without WooCommerce data (graceful degradation)")
+            return pd.DataFrame()
+    
     def extract_models_from_all_sources(self):
         """Extract models from all sources and build mapping with normalization"""
         print("\n[3/6] Extracting MODELS...")
@@ -174,6 +244,33 @@ class PriceComparisonBuilder:
                         'has_discount': has_discount
                     })
         
+        # Add WooCommerce stock data if available (before building model map)
+        if self.woocommerce_stock is not None and len(self.woocommerce_stock) > 0:
+            print("\n  Adding WooCommerce stock data to matching...")
+            for _, row in self.woocommerce_stock.iterrows():
+                model = row.get('model')
+                if not model:
+                    continue
+                
+                model_normalized = ModelExtractor.normalize_for_matching(model)
+                
+                # Add WooCommerce product to all_products
+                wc_product = {
+                    'source': 'WOOCOMMERCE_STOCK',
+                    'name': row.get('name', ''),
+                    'model': model,
+                    'model_normalized': model_normalized,
+                    'quantity': row.get('stock_quantity', 0),
+                    'price': row.get('price', 0),
+                    'regular_price': row.get('regular_price'),
+                    'discount_price': row.get('sale_price'),
+                    'has_discount': row.get('has_discount', False),
+                    'stock_quantity': row.get('stock_quantity', 0),  # Keep for filtering
+                }
+                all_products.append(wc_product)
+            
+            print(f"  [OK] Added {len(self.woocommerce_stock)} WooCommerce products to matching")
+        
         # Build model mapping using NORMALIZED models
         # First pass: exact matches
         for product in all_products:
@@ -184,7 +281,8 @@ class PriceComparisonBuilder:
         
         # Second pass: fuzzy matching for unmatched inventory items
         inventory_products = [p for p in all_products if p['source'] == 'INVENTORY']
-        scraped_products = [p for p in all_products if p['source'] != 'INVENTORY']
+        scraped_products = [p for p in all_products if p['source'] != 'INVENTORY' and p['source'] != 'WOOCOMMERCE_STOCK']
+        wc_products = [p for p in all_products if p['source'] == 'WOOCOMMERCE_STOCK']
         
         fuzzy_matches = 0
         for inv_product in inventory_products:
@@ -208,9 +306,110 @@ class PriceComparisonBuilder:
                             self.model_map[inv_norm].append(scraped_product)
                             fuzzy_matches += 1
         
-        print(f"[OK] Extracted {len(all_products)} products")
+        # Third pass: fuzzy matching for WooCommerce (separate to avoid conflicts)
+        wc_fuzzy_matches = 0
+        for inv_product in inventory_products:
+            inv_model = inv_product['model']
+            inv_norm = inv_product['model_normalized']
+            
+            # Check if WooCommerce product already in this group
+            has_wc = any(p['source'] == 'WOOCOMMERCE_STOCK' for p in self.model_map[inv_norm])
+            if has_wc:
+                continue  # Already has WooCommerce match
+            
+            # Try fuzzy matching with WooCommerce products
+            for wc_product in wc_products:
+                wc_model = wc_product['model']
+                if not wc_model:
+                    continue
+                
+                # Use improved fuzzy matching
+                is_match, confidence = ModelExtractor.match_models_fuzzy(inv_model, wc_model)
+                
+                if is_match and confidence >= 0.9:  # Only high-confidence matches
+                    # Add to same group
+                    if wc_product not in self.model_map[inv_norm]:
+                        self.model_map[inv_norm].append(wc_product)
+                        wc_fuzzy_matches += 1
+                        break  # Only one WooCommerce match per inventory product
+        
+        # Fourth pass: Special handling for DimKava scraper ↔ WooCommerce
+        # If product found via DimKava scraper but not via WooCommerce API, try name-based matching
+        dimkava_scraper_products = [p for p in all_products if p['source'] == 'DIM_KAVA']
+        dimkava_wc_matches = 0
+        
+        for dimkava_product in dimkava_scraper_products:
+            dimkava_model = dimkava_product.get('model')
+            dimkava_name = dimkava_product.get('name', '').upper()
+            
+            if not dimkava_model:
+                continue
+            
+            # Find inventory product for this DimKava scraper product
+            dimkava_norm = dimkava_product['model_normalized']
+            inv_for_dimkava = next((p for p in self.model_map[dimkava_norm] if p['source'] == 'INVENTORY'), None)
+            
+            if not inv_for_dimkava:
+                continue  # No inventory product for this DimKava scraper product
+            
+            # Check if WooCommerce already matched for this inventory product
+            inv_norm = inv_for_dimkava['model_normalized']
+            has_wc = any(p['source'] == 'WOOCOMMERCE_STOCK' for p in self.model_map[inv_norm])
+            
+            if has_wc:
+                continue  # Already has WooCommerce match
+            
+            # Try to find WooCommerce product by name (if model didn't match)
+            # Extract key words from DimKava scraper product name
+            # Look for similar WooCommerce products
+            for wc_product in wc_products:
+                wc_name = wc_product.get('name', '').upper()
+                wc_model = wc_product.get('model', '')
+                
+                # If WooCommerce product has a model, skip (already tried in fuzzy matching)
+                if wc_model:
+                    continue
+                
+                # Try name-based matching: check if key model parts are in WooCommerce name
+                # Extract model parts from DimKava name
+                model_parts = []
+                if dimkava_model:
+                    # Remove common suffixes and get base parts
+                    base_model = ModelExtractor.normalize_for_matching(dimkava_model)
+                    # Try to find base model in WooCommerce name
+                    if base_model and len(base_model) >= 4:
+                        # Check if base model appears in WooCommerce name
+                        if base_model in wc_name.replace(' ', '').replace('-', '').replace('/', ''):
+                            # Additional check: brand should match
+                            inv_brand = inv_for_dimkava.get('name', '').upper()
+                            brand_match = False
+                            for brand in ['DELONGHI', 'MELITTA', 'MELITA', 'NIVONA', 'GAGGIA', 'SAECO']:
+                                if brand in inv_brand and brand in wc_name:
+                                    brand_match = True
+                                    break
+                            
+                            if brand_match:
+                                # Found match by name!
+                                if wc_product not in self.model_map[inv_norm]:
+                                    self.model_map[inv_norm].append(wc_product)
+                                    dimkava_wc_matches += 1
+                                    break  # Only one match per DimKava product
+        
+        print(f"[OK] Extracted {len(all_products)} products total")
+        print(f"     - Inventory: {len(inventory_products)} products")
+        print(f"     - Scraped: {len(scraped_products)} products")
+        if len(wc_products) > 0:
+            print(f"     - WooCommerce: {len(wc_products)} products")
         print(f"[OK] Found {len(self.model_map)} unique normalized models")
-        print(f"[OK] Added {fuzzy_matches} fuzzy matches (base model matching)")
+        print(f"[OK] Added {fuzzy_matches} fuzzy matches (confidence >= 0.9)")
+        if wc_fuzzy_matches > 0:
+            print(f"[OK] Added {wc_fuzzy_matches} WooCommerce fuzzy matches (confidence >= 0.9)")
+        if dimkava_wc_matches > 0:
+            print(f"[OK] Added {dimkava_wc_matches} DimKava scraper ↔ WooCommerce name-based matches")
+        
+        # Show matching statistics
+        matched_inv = len([p for p in inventory_products if len([s for s in self.model_map[p['model_normalized']] if s['source'] != 'INVENTORY']) > 0])
+        print(f"[OK] Matched {matched_inv}/{len(inventory_products)} inventory products ({matched_inv/len(inventory_products)*100:.1f}%)")
         
         return all_products
     
@@ -235,13 +434,38 @@ class PriceComparisonBuilder:
             if not competitor_products:
                 continue
             
-            # Build row - use ORIGINAL model for display
+            # Check if product has stock in WooCommerce (for additional information)
+            wc_stock_product = next((p for p in products if p['source'] == 'WOOCOMMERCE_STOCK'), None)
+            stock_quantity = wc_stock_product.get('stock_quantity', 0) if wc_stock_product else 0
+            
+            # NOTE: We show ALL inventory products, WooCommerce data is additional information
+            # No filtering by WooCommerce stock - all inventory products are shown
+            
+            # Build row - keep Our Price as inventory input cost (per requirement)
             row = {
                 'Quantity': inventory_product['quantity'],
                 'Model': inventory_product['model'],  # Original model for display
                 'Product Name': inventory_product['name'],
                 'Our Price': inventory_product['price'],
             }
+            
+            # Add WooCommerce stock and price data
+            if wc_stock_product:
+                row['DIM_KAVA_STOCK'] = int(wc_stock_product.get('stock_quantity', 0))
+                if wc_stock_product.get('has_discount') and wc_stock_product.get('regular_price') and wc_stock_product.get('discount_price'):
+                    regular = round(wc_stock_product['regular_price'], 2)
+                    discount = round(wc_stock_product['discount_price'], 2)
+                    row['DIM_KAVA_WC_PRICE'] = f"{regular:.2f} \\ {discount:.2f}"
+                else:
+                    price = wc_stock_product.get('price') or wc_stock_product.get('regular_price')
+                    if price and not pd.isna(price):
+                        rounded = round(price, 2)
+                        row['DIM_KAVA_WC_PRICE'] = f"{rounded:.2f}"
+                    else:
+                        row['DIM_KAVA_WC_PRICE'] = '-'
+            else:
+                row['DIM_KAVA_STOCK'] = '-'
+                row['DIM_KAVA_WC_PRICE'] = '-'
             
             # Add competitor prices - DIM_KAVA first (our website), then others
             for source in ['DIM_KAVA', 'ALTA', 'KONTAKT', 'ELITE', 'COFFEEHUB', 'COFFEEPIN', 'VELI_STORE', 'VEGA_GE']:
@@ -365,6 +589,7 @@ class PriceComparisonBuilder:
         # Load data
         self.inventory = self.load_inventory()
         self.scraped_data = self.load_scraped_data()
+        self.woocommerce_stock = self.load_woocommerce_stock()  # Load WooCommerce stock
         
         # Extract models
         self.extract_models_from_all_sources()

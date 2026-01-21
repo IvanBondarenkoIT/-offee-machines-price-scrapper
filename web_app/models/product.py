@@ -16,6 +16,7 @@ class Product(db.Model):
     our_price = db.Column(db.Numeric(10, 2))
     brand = db.Column(db.String(50), index=True)  # DeLonghi, Melitta, Nivona
     competitor_count = db.Column(db.Integer, default=0)
+    dimkava_wc_stock = db.Column(db.Integer, default=None)  # WooCommerce stock quantity (optional)
     
     # Relationships
     competitor_prices = db.relationship('CompetitorPrice', backref='product', lazy='dynamic', cascade='all, delete-orphan')
