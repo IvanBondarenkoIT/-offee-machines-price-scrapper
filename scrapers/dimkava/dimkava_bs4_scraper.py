@@ -25,10 +25,10 @@ logger = setup_logger("dimkava_bs4_scraper")
 
 
 class DimKavaBS4Scraper:
-    """Scraper for Dim Kava (our own store)"""
+    """Scraper for Dim Kava (our own store) supporting multiple brand URLs"""
     
     def __init__(self):
-        self.url = DIMKAVA_CONFIG["url"]
+        self.urls = DIMKAVA_CONFIG.get("urls", []) or [DIMKAVA_CONFIG.get("url")]
         self.driver = None
         self.products = []
         
@@ -53,10 +53,10 @@ class DimKavaBS4Scraper:
         
         logger.info("WebDriver setup complete")
         
-    def load_page_and_wait(self):
+    def load_page_and_wait(self, url: str):
         """Load page and wait for all products to load"""
-        logger.info(f"Loading page: {self.url}")
-        self.driver.get(self.url)
+        logger.info(f"Loading page: {url}")
+        self.driver.get(url)
         
         # Initial wait for page to start loading
         time.sleep(4)
@@ -65,7 +65,7 @@ class DimKavaBS4Scraper:
         scroll_pause = DIMKAVA_CONFIG.get("scroll_pause", 3)
         logger.info("Scrolling to load all products...")
         
-        for i in range(5):  # Increased scrolls
+        for i in range(DIMKAVA_CONFIG.get("num_scrolls", 5)):
             # Scroll to bottom
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(scroll_pause)
@@ -79,7 +79,7 @@ class DimKavaBS4Scraper:
                 pass
         
         # Final wait for dynamic content to load
-        wait_time = DIMKAVA_CONFIG["wait_for_load"]
+        wait_time = DIMKAVA_CONFIG.get("wait_for_load", 8)
         logger.info(f"Waiting {wait_time} more seconds for all products to finish loading...")
         time.sleep(wait_time)
         
@@ -114,6 +114,7 @@ class DimKavaBS4Scraper:
             try:
                 # Extract name from un-product-title class
                 name = title_elem.get_text(strip=True)
+                name = self._normalize_name(name)
                 
                 if not name or len(name) < 5:
                     logger.warning(f"Invalid name for product {idx}")
@@ -183,7 +184,7 @@ class DimKavaBS4Scraper:
                     "final_price": final_price,
                     "has_discount": has_discount,
                     "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "url": self.url,
+                    "url": "",
                     "store": "DIM_KAVA",
                 }
                 
@@ -237,6 +238,22 @@ class DimKavaBS4Scraper:
             self.driver.quit()
             logger.info("Browser closed")
     
+    def _normalize_name(self, name: str) -> str:
+        """Normalize product name: remove marketing/Georgian tails, collapse spaces"""
+        if not name:
+            return name
+        # Collapse spaces
+        name = re.sub(r"\s+", " ", name)
+        # Remove common Georgian blocks and marketing tails
+        patterns = [
+            r"\(ქართული\).*$",
+            r"When buying from us,.*$",
+            r"Add to Wishlist$",
+        ]
+        for p in patterns:
+            name = re.sub(p, "", name, flags=re.IGNORECASE).strip()
+        return name.strip()
+
     def run(self):
         """Main execution method"""
         try:
@@ -245,12 +262,12 @@ class DimKavaBS4Scraper:
             logger.info("=" * 60)
             
             self.setup_driver()
-            self.load_page_and_wait()
-            
-            html = self.driver.page_source
-            logger.info(f"Got HTML page source ({len(html)} chars)")
-            
-            self.parse_with_bs4(html)
+            for url in self.urls:
+                logger.info(f"Processing URL: {url}")
+                self.load_page_and_wait(url)
+                html = self.driver.page_source
+                logger.info(f"Got HTML page source ({len(html)} chars)")
+                self.parse_with_bs4(html)
             self.save_results()
             
             logger.info("=" * 60)

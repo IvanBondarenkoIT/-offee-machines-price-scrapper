@@ -48,8 +48,13 @@ ELITE_CONFIG = {
 
 # DIM KAVA Configuration (our own store)
 DIMKAVA_CONFIG = {
-    "url": "https://dimkava.ge/brand/delonghi/",
-    "expected_products": 42,  # Total items on page (41 with prices)
+    "urls": [
+        # Brand category pages
+        "https://dimkava.ge/brand/delonghi/",
+        "https://dimkava.ge/brand/melita/",
+        "https://dimkava.ge/brand/nivona/",
+    ],
+    "expected_products": 120,  # combined brands
     "wait_for_load": 8,  # Seconds to wait after scrolling
     "scroll_pause": 3,  # Seconds between scrolls
     "num_scrolls": 5,  # Number of scrolls to trigger lazy loading
@@ -78,6 +83,20 @@ COFFEEPIN_CONFIG = {
     "pagination_url": "&page={page_num}",  # URL pattern for pagination
 }
 
+<<<<<<< HEAD
+=======
+# VELI.STORE Configuration
+VELI_STORE_CONFIG = {
+    "urls": [
+        # Main coffee machines catalog (English)
+        "https://veli.store/en/catalog/coffee-machines",
+    ],
+    "pages_per_url": 5,  # Number of pages to scan per URL
+    "expected_products": 40,  # Approximate expected total
+    "pagination_url": "?page={page_num}",  # URL pattern for pagination
+}
+
+>>>>>>> 36e36cb99264bc89a933e7fa60c6102d8027ef35
 # VEGA.GE Configuration
 VEGA_GE_CONFIG = {
     "urls": [

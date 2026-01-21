@@ -1,0 +1,20 @@
+# GitGuardian configuration
+# This file tells GitGuardian which files to ignore
+
+version: 2
+
+paths-ignore:
+  - "generate_railway_keys.py"  # Script that generates keys, not actual secrets
+  - "*.example.*"               # Example files
+  - "*.template.*"              # Template files
+  - "test_*.py"                 # Test files
+  - "docs/**"                   # Documentation
+  - "**/*.md"                   # Markdown files may contain example keys
+  - "upload_data.py"            # Local script, now uses env vars only
+  - "web_uploader/config.ini"   # Local config, should be in .gitignore
+
+# Actual secrets to protect (never commit these!)
+# - config.ini (in .gitignore)
+# - .env (in .gitignore)
+# - Railway environment variables (never in git)
+

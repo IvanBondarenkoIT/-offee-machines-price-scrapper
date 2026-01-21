@@ -27,3 +27,8 @@ gunicorn==21.2.0
 # Утилиты
 requests==2.31.0
 
+# PDF generation
+reportlab==4.0.7
+
+# Internationalization
+# Using custom translation system (web_app/utils/i18n.py)
