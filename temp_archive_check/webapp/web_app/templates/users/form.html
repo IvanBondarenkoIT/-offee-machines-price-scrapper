@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Create User') if action == 'create' else _('Edit User') }} - Coffee Price Monitor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-{% if action == 'create' %}plus-circle{% else %}pencil{% endif %}"></i> 
+        {{ _('Create User') if action == 'create' else _('Edit User') }}
+    </h1>
+    <a href="{{ url_for('users.index') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> {{ _('Back to List') }}
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">{{ _('Username') }} <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               value="{{ user.username if user else '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">{{ _('Email') }} <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="{{ user.email if user else '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            {{ _('Password') }} <span class="text-danger">*</span>
+                            {% if action == 'edit' %}
+                            <small class="text-muted">({{ _('leave empty to keep current password') }})</small>
+                            {% endif %}
+                        </label>
+                        <input type="password" class="form-control" id="password" name="password" 
+                               {% if action == 'create' %}required{% endif %}>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="role" class="form-label">{{ _('Role') }} <span class="text-danger">*</span></label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="viewer" {% if user and user.role == 'viewer' %}selected{% endif %}>
+                                {{ _('Viewer') }} - {{ _('Read-only access') }}
+                            </option>
+                            <option value="manager" {% if user and user.role == 'manager' %}selected{% endif %}>
+                                {{ _('Manager') }} - {{ _('View and export data') }}
+                            </option>
+                            <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>
+                                {{ _('Admin') }} - {{ _('Full access') }}
+                            </option>
+                        </select>
+                        {% if user and user.id == current_user.id %}
+                        <small class="text-muted">{{ _('You cannot change your own role') }}</small>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('users.index') }}" class="btn btn-secondary">{{ _('Cancel') }}</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-{% if action == 'create' %}plus-circle{% else %}check-circle{% endif %}"></i> 
+                            {{ _('Create') if action == 'create' else _('Update') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

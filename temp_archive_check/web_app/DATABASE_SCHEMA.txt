@@ -1,0 +1,78 @@
+DATABASE SCHEMA - Coffee Price Monitor
+========================================
+
+TABLES AND RELATIONSHIPS:
+
+1. users
+   - id (PK, Integer)
+   - username (String, Unique)
+   - email (String, Unique)
+   - password_hash (String)
+   - role (String): 'admin', 'manager', 'viewer'
+   - created_at (DateTime)
+   - last_login (DateTime)
+   |
+   | 1:N (one user can create many uploads)
+   v
+   
+2. uploads
+   - id (PK, Integer)
+   - upload_date (Date, Unique) <-- One upload per date
+   - uploaded_at (DateTime)
+   - uploaded_by (FK -> users.id)
+   - file_name (String)
+   - total_products (Integer)
+   - status (String): 'completed', 'processing', 'failed'
+   |
+   |-- 1:N (one upload has many products)
+   |   |
+   |   v
+   |   3. products
+   |      - id (PK, Integer)
+   |      - upload_id (FK -> uploads.id)
+   |      - model (String)
+   |      - name (String)
+   |      - quantity (Integer)
+   |      - our_price (Numeric)
+   |      - brand (String): 'DeLonghi', 'Melitta', 'Nivona'
+   |      - competitor_count (Integer)
+   |      |
+   |      | 1:N (one product has many competitor prices)
+   |      v
+   |      4. competitor_prices
+   |         - id (PK, Integer)
+   |         - product_id (FK -> products.id)
+   |         - competitor (String): 'ALTA', 'KONTAKT', 'ELITE', etc.
+   |         - price (Numeric)
+   |         - regular_price (Numeric)
+   |         - discount_price (Numeric)
+   |         - has_discount (Boolean)
+   |         - url (Text)
+   |
+   |-- 1:1 (one upload has one statistics record)
+       |
+       v
+       5. statistics
+          - id (PK, Integer)
+          - upload_id (FK -> uploads.id, Unique)
+          - total_value (Numeric)
+          - avg_price (Numeric)
+          - products_cheaper (Integer)
+          - products_expensive (Integer)
+          - products_no_competitors (Integer)
+
+CASCADE DELETE:
+- Delete upload -> deletes all related products, competitor_prices, statistics
+- Delete product -> deletes all related competitor_prices
+
+INDEXES:
+- users.username (UNIQUE)
+- users.email (UNIQUE)
+- uploads.upload_date (UNIQUE)
+- products.upload_id
+- products.model
+- products.brand
+- competitor_prices.product_id
+- competitor_prices.competitor
+- statistics.upload_id (UNIQUE)
+

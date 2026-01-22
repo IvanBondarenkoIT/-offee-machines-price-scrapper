@@ -92,6 +92,15 @@ data/inbox/inventory_metadata.json
 
 # Local config files with secrets
 web_uploader/config.ini
-upload_data.py
 .env.local
 *.local.ini
+
+# Test files (can contain test data)
+test_*.py
+check_*.py
+
+# Large archive files
+*_ARCHIVE.zip
+portable_build_ARCHIVE.zip
+web_app_ARCHIVE.zip
+web_uploader_ARCHIVE.zip
