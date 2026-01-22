@@ -6,6 +6,7 @@ openpyxl==3.1.4
 pandas==2.1.4
 python-dotenv==1.0.1
 python-docx==1.2.0
+requests==2.31.0  # For WooCommerce API client
 pywin32>=305  # For Word to PDF conversion (Windows only)
 
 # Testing (optional)
